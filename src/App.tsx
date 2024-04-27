@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import PasswordInput from "./PasswordInput";
 import ShowTick from "./ShowTick";
-import { usePasswordPolicy } from "./hook/use-password-policy";
+// import { usePasswordPolicy } from "./hook/use-password-policy";
+import { usePasswordPolicy } from "use-password-policy";
 import Styles from './style.module.css'
 
 export interface CustomPolicy {
@@ -30,10 +31,10 @@ function App() {
 
   const pp = usePasswordPolicy({
     password,
-    config: { caseCheck: false },
+    config: { caseCheck: true },
     customPolicies,
   });
-  console.log(pp)
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
   };

@@ -1,0 +1,29 @@
+{
+  "name": "use-password-policy",
+  "version": "1.0.4",
+  "description": "",
+  "main": "use-password-policy.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rahulpatwa1303/use-password-policy.git"
+  },
+  "keywords": [
+    "password",
+    "password-policy",
+    "hooks",
+    "react"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rahulpatwa1303/use-password-policy/issues"
+  },
+  "homepage": "https://github.com/rahulpatwa1303/use-password-policy#readme",
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

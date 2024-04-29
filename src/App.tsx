@@ -1,40 +1,36 @@
 import React, { useState } from "react";
 import PasswordInput from "./PasswordInput";
 import ShowTick from "./ShowTick";
-// import { usePasswordPolicy } from "./hook/use-password-policy";
-import { usePasswordPolicy } from "use-password-policy";
-import Styles from './style.module.css'
-
-export interface CustomPolicy {
-  name: string; // Name of the policy (e.g., "SymbolCheck")
-  regex?: RegExp; // Regular expression for the check (optional)
-  checkFunction?: (password: string) => boolean; // Custom check function (optional)
-  message?: string; // Error message if the check fails (optional)
-}
+// import { usePasswordPolicy } from "use-password-policy";
+import { usePasswordPolicy } from "./hook/use-password-policy";
+import Styles from "./style.module.css";
+import { CustomPolicy } from "./hook/Type";
 
 function App() {
   const [password, setPassword] = useState("");
 
-  const customSymbolCheck: CustomPolicy = {
-    name: "symbolCheck",
-    regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/,
-    message: "Password must contain at least one symbol.",
+  const policyMessage = {
+    startWithA: "Password must start with a",
+    caseCheck: "Password must have a captial letter",
+    lengthCheck: "Password must be 8 character long",
+    digitCheck: "Password must contain a digit",
+    specialCharCheck: "Password must contain a special char check",
   };
 
   const customACheck: CustomPolicy = {
     name: "startWithA",
-    checkFunction: (password) => password.startsWith("a"),
+    checkFunction: (password) => password.startsWith("a" || "A"),
     message: "Password must contain at least one symbol.",
   };
 
-  const customPolicies = [customSymbolCheck, customACheck];
+  const customPolicies = [customACheck];
 
-  const pp = usePasswordPolicy({
+  const policy = usePasswordPolicy({
     password,
-    config: { caseCheck: true },
+    config: { caseCheck: false, lengthCheck: false },
     customPolicies,
   });
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(e.target.value);
   };
@@ -46,7 +42,12 @@ function App() {
         value={password}
         allowShowPassword={true}
       />
-      <ShowTick ValueByKey={pp.caseCheck} />
+      <div className={Styles.policy_messages}>
+
+      {Object.entries(policy).map(([key, value]: [string, boolean]) => (
+        <ShowTick ValueByKey={value} policyMessage={policyMessage[key]} />
+        ))}
+        </div>
     </div>
   );
 }

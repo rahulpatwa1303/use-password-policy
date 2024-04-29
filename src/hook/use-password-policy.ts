@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { CustomPolicy } from "../App";
+import { CustomPolicy, StateObjects, DefaultConfig } from "./Type";
 
 export const usePasswordPolicy = ({
   password,
@@ -12,15 +12,15 @@ export const usePasswordPolicy = ({
   customPolicies?: CustomPolicy[];
   useDefaultConfig?: boolean;
 }) => {
-  const defaultConfig = {
+  const defaultConfig: DefaultConfig = {
     caseCheck: true,
     lengthCheck: true,
     digitCheck: true,
     specialCharCheck: true,
-    minLength: 8, // Adjust minimum length as needed
-    uppercaseCharRegex: /[A-Z]/, // Allow customization of regex patterns
+    minLength: 8,
+    uppercaseCharRegex: /[A-Z]/,
     digitRegex: /\d/,
-    specialCharRegex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/, // More inclusive special characters
+    specialCharRegex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/,
   };
 
   const merged = useMemo(() => mergedConfig(defaultConfig, config), []);
@@ -35,12 +35,22 @@ export const usePasswordPolicy = ({
 
   const [policy, setPolicy] = useState<{ [key: string]: boolean }>(() => {
     if (useDefaultConfig) {
-      return {
+      const defaultStates: StateObjects = {
         caseCheck: false,
         lengthCheck: false,
         digitCheck: false,
         specialCharCheck: false,
-        // Add properties for custom policies from mergedConfig
+      };
+      const safeConfig: StateObjects = config || {};
+
+      Object.entries(defaultStates).map(([key]) => {
+        if (safeConfig.hasOwnProperty(key) && safeConfig[key] === false) {
+          delete defaultStates[key];
+          delete defaultConfig[key];
+        }
+      });
+      return {
+        ...defaultStates,
         ...customPolicies.reduce(
           (acc, policy: { name: string }) => ({
             ...acc,
@@ -62,17 +72,25 @@ export const usePasswordPolicy = ({
   });
 
   const evaluateChecks = () => {
-    const newPolicy: { [key: string]: boolean } = { ...policy };
+    const newPolicy: StateObjects = { ...policy };
+    const policyKeys = Object.keys(policy);
+
     if (useDefaultConfig) {
-      newPolicy.caseCheck =
-        merged.caseCheck && RegExp(merged.uppercaseCharRegex).test(password);
-      newPolicy.lengthCheck =
-        merged.lengthCheck && password.length >= merged.minLength;
-      newPolicy.digitCheck =
-        merged.digitCheck && RegExp(merged.digitRegex).test(password);
-      newPolicy.specialCharCheck =
-        merged.specialCharCheck &&
-        RegExp(merged.specialCharRegex).test(password);
+      policyKeys.forEach((key) => {
+        if (merged.hasOwnProperty(key) && policy.hasOwnProperty(key)) {
+          const checkFunction = {
+            caseCheck: () => RegExp(merged.uppercaseCharRegex).test(password),
+            lengthCheck: () => password.length >= merged.minLength,
+            digitCheck: () => RegExp(merged.digitRegex).test(password),
+            specialCharCheck: () =>
+              RegExp(merged.specialCharRegex).test(password),
+          }[key];
+
+          if (checkFunction) {
+            newPolicy[key] = merged[key] && checkFunction();
+          }
+        }
+      });
     }
 
     customPolicies.forEach((customPolicy: CustomPolicy) => {

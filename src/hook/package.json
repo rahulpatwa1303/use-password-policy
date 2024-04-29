@@ -1,6 +1,6 @@
 {
   "name": "use-password-policy",
-  "version": "1.0.1",
+  "version": "1.0.7",
   "description": "",
   "main": "use-password-policy.ts",
   "scripts": {

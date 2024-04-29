@@ -1,3 +1,7 @@
+body{
+  margin: 0;
+}
+
 .policy_message_section {
   display: flex;
   align-items: center;
@@ -43,6 +47,7 @@ input:hover {
   width: 1rem;
   height: 1rem;
   fill: #0d0c22;
+  cursor: pointer;
 }
 
 .policy_message_section_success {
@@ -50,4 +55,14 @@ input:hover {
 }
 .policy_message_section_error {
   color: #c1121f;
+}
+
+.main {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  height: 100vh;
+  gap: 1rem;
 }

@@ -1,29 +1,46 @@
 {
   "name": "use-password-policy",
-  "version": "1.0.7",
-  "description": "",
-  "main": "use-password-policy.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "version": "2.0.0",
+  "description": "A simple, lightweight, and customizable React hook for real-time password strength validation.",
+  "license": "MIT",
+  "author": "Rahul Patwa <rahul.y2j@gmail.com>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rahulpatwa1303/use-password-policy.git"
   },
   "keywords": [
+    "react",
+    "hook",
     "password",
     "password-policy",
-    "hooks",
-    "react"
+    "validation",
+    "form",
+    "typescript",
+    "password-strength"
   ],
-  "author": "",
-  "license": "ISC",
+  "homepage": "https://github.com/rahulpatwa1303/use-password-policy#readme",
   "bugs": {
     "url": "https://github.com/rahulpatwa1303/use-password-policy/issues"
   },
-  "homepage": "https://github.com/rahulpatwa1303/use-password-policy#readme",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "npm run build -- --watch",
+    "prepublishOnly": "npm run build"
+  },
   "peerDependencies": {
+    "react": ">=16.8.0",
+    "styled-components": ">=5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "tsup": "^8.0.2",
+    "typescript": "^5.4.5"
   }
 }

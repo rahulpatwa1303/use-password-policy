@@ -3,9 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+   "homepage": "https://rahulpatwa1303.github.io/use-password-policy/",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "react-scripts build",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",

@@ -42,7 +42,7 @@ jobs:
 
       - name: Build the demo application
         working-directory: ./demo
-        run: npm run build
+        run: /npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

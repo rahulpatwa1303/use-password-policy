@@ -2,24 +2,19 @@
 
 name: Deploy Demo App to GitHub Pages
 
-# Run this workflow only when changes are pushed to the `main` branch
-# inside the `demo/` directory, or when triggered manually.
 on:
   push:
     branches:
-      - main # Or your default branch
+      - main
     paths:
       - 'demo/**'
-  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
-# Grant GITHUB_TOKEN the permissions it needs to deploy to Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -37,17 +32,18 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18' # Use the Node.js version your project requires
+          node-version: '18'
           cache: 'npm'
 
       - name: Install dependencies (from monorepo root)
-        # We run this from the root to ensure all cross-package dependencies are linked correctly
         run: npm install
 
+      # --- START OF FIX ---
       - name: Build the demo application
-        # Use `working-directory` to run the build command inside the /demo folder
-        working-directory: ./demo
-        run: npm run build
+        # Run the build command FROM THE ROOT, but target the 'demo' workspace
+        # This ensures it finds the 'react-scripts' executable in the root node_modules
+        run: npm run build --workspace=demo
+      # --- END OF FIX ---
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -55,10 +51,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # This should be the output directory of your build command
-          # Vite -> 'demo/dist'
-          # Create React App -> 'demo/build'
-          path: 'demo/dist' # <-- VERY IMPORTANT: CHANGE 'dist' to 'build' if you use CRA
+          # The path is still relative to the repository root
+          path: 'demo/build' # <-- IMPORTANT: Ensure this is 'build' for CRA
 
       - name: Deploy to GitHub Pages
         id: deployment

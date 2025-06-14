@@ -1,0 +1,496 @@
+/* demo/src/App.css */
+:root {
+  --font-sans: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --bg-color: #1a1a1a;
+  --card-bg: #242424;
+  --border-color: #3a3a3a;
+  --text-color: rgba(255, 255, 255, 0.87);
+  --text-muted: #888;
+  --accent-color: #646cff;
+  --accent-hover: #747bff;
+  --color-success: #2ecc71;
+  --color-danger: #e74c3c;
+  --color-weak: #f1c40f;
+  --color-medium: #f39c12;
+  --color-strong: #27ae60;
+}
+
+body {
+  font-family: var(--font-sans);
+  color-scheme: light dark;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 1rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.title-group h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.title-group p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.github-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #333;
+  color: var(--text-color);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.github-button:hover {
+  background-color: #444;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* input[type="password"], input[type="text"] {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: #1e1e1e;
+  color: var(--text-color);
+  font-size: 1rem;
+  transition: border-color 0.2s;
+} */
+
+input[type="password"]:focus, input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.show-hide-btn {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.strength-meter {
+  width: 100%;
+  height: 8px;
+  background-color: #333;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+
+.strength-bar {
+  height: 100%;
+  transition: width 0.4s ease-in-out, background-color 0.4s ease-in-out;
+  border-radius: 4px;
+}
+
+/* Strength Colors */
+.strength-bar.very-weak { background-color: var(--color-danger); }
+.strength-bar.weak { background-color: var(--color-weak); }
+.strength-bar.medium { background-color: var(--color-medium); }
+.strength-bar.strong, .strength-bar.very-strong { background-color: var(--color-strong); }
+
+.strength-label {
+  text-align: right;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 1.5rem;
+  color: var(--text-muted);
+}
+
+.policy-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.policy-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  transition: color 0.3s;
+}
+
+.policy-list li .icon {
+  font-weight: bold;
+}
+
+.policy-list li.passed {
+  color: var(--color-success);
+}
+.policy-list li.failed {
+  color: var(--color-danger);
+}
+
+.options-group {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem 1.5rem 1.5rem;
+  margin-top: 1rem;
+}
+.options-group legend {
+  padding: 0 0.5rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.options-group .option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+.options-group .option-item.checkbox {
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+.card-footer {
+  padding: 1.5rem;
+  background-color: #1e1e1e;
+  border-top: 1px solid var(--border-color);
+}
+
+.submit-button {
+  width: 100%;
+  padding: 0.85rem;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--accent-color);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}
+
+.submit-button:disabled {
+  background-color: #444;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .card-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .policy-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.policy-list li {
+  position: relative;
+}
+
+.remove-rule-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #444;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+
+.policy-list li:hover .remove-rule-btn {
+  opacity: 1;
+}
+
+.remove-rule-btn:hover {
+  background: var(--color-danger);
+}
+
+/* Styles for the "Add Rule" form */
+.add-rule-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 1.75rem;
+  margin-top: 1rem;
+}
+
+.add-rule-form input {
+  padding: 0.5rem 0.75rem !important; /* Overriding other input styles */
+  font-size: 0.9rem !important;
+}
+
+.add-rule-form button {
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-rule-form button:hover {
+  background-color: var(--accent-hover);
+}
+
+.error-text {
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  margin: 0.75rem 0 0;
+  text-align: center;
+}
+.password-input-container{
+    position: relative;
+    display: flex;
+}
+
+/* Define base variables and light theme */
+:root {
+  --bg-color: #f4f4f9;
+  --bg-secondary: #ffffff;
+  --text-color: #2c3e50;
+  --text-muted: #7f8c8d;
+  --border-color: #e0e0e0;
+  --accent-color: #646cff;
+  --accent-hover: #535bf2;
+  --code-bg: #e8e8e8;
+  --shadow-color: rgba(0, 0, 0, 0.05);
+
+  --color-success: #27ae60;
+  --color-danger: #c0392b;
+  --color-weak: #f39c12;
+  --color-medium: #d35400;
+  --color-strong: #27ae60;
+
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color-scheme: light dark;
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem; /* Offset for fixed header */
+}
+
+/* Define dark theme overrides */
+[data-theme='dark'] {
+  --bg-color: #1a1a1a;
+  --bg-secondary: #242424;
+  --text-color: rgba(255, 255, 255, 0.87);
+  --text-muted: #888;
+  --border-color: #3a3a3a;
+  --accent-color: #747bff;
+  --accent-hover: #646cff;
+  --code-bg: #2c2c2c;
+  --shadow-color: rgba(0, 0, 0, 0.2);
+}
+
+/* --- Global & Layout Styles --- */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+section {
+  padding: 4rem 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+section h2 {
+  text-align: center;
+  font-size: 2.25rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+section > p {
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 0 auto 3rem auto;
+}
+
+/* --- Header --- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: color-mix(in srgb, var(--bg-secondary) 85%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.logo { font-weight: 700; font-size: 1.2rem; }
+.app-nav { display: flex; gap: 1.5rem; }
+.app-nav a { text-decoration: none; color: var(--text-muted); font-weight: 500; transition: color 0.2s; }
+.app-nav a:hover { color: var(--accent-color); }
+
+.theme-toggle { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0.5rem; display: flex; align-items: center; }
+.theme-toggle:hover { color: var(--accent-color); }
+
+/* --- Hero Section --- */
+.hero-section { text-align: center; padding-top: 6rem; padding-bottom: 6rem; }
+.hero-title { font-size: clamp(2.5rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.2; margin-bottom: 1rem; }
+.hero-subtitle { font-size: clamp(1rem, 2vw, 1.25rem); color: var(--text-muted); max-width: 600px; margin: 0 auto 2.5rem; }
+.hero-cta { display: flex; justify-content: center; gap: 1rem; }
+.cta-button { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1.8rem; border-radius: 8px; text-decoration: none; font-size: 1rem; font-weight: 600; transition: all 0.2s ease-in-out; border: 2px solid transparent; }
+.cta-button.primary { background-color: var(--accent-color); color: #fff; }
+.cta-button.primary:hover { background-color: var(--accent-hover); transform: translateY(-2px); }
+.cta-button.secondary { background-color: transparent; color: var(--text-muted); border-color: var(--border-color); }
+.cta-button.secondary:hover { background-color: var(--bg-secondary); color: var(--text-color); }
+
+/* --- Features & How-it-works --- */
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
+.feature-card { background-color: var(--bg-secondary); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px var(--shadow-color); transition: transform 0.2s, box-shadow 0.2s; }
+.feature-card:hover { transform: translateY(-5px); }
+.feature-card h3 { margin-top: 0; font-size: 1.2rem; }
+.feature-card p { color: var(--text-muted); line-height: 1.6; }
+.how-it-works-content { background-color: var(--bg-secondary); padding: 2rem; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px var(--shadow-color); }
+.step h4 { font-size: 1.1rem; margin-bottom: 1rem; color: var(--accent-color); }
+pre { background-color: var(--code-bg); padding: 1.5rem; border-radius: 8px; overflow-x: auto; font-size: 0.9rem; }
+
+/* --- Demo Playground (copied and adapted from previous CSS) --- */
+.card { background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px var(--shadow-color); max-width: 600px; margin: 0 auto; }
+.card-body, .card-footer { padding: 1.5rem; }
+.password-wrapper { position: relative; }
+.input-group input, .add-rule-form input { width: -webkit-fill-available; padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); font-size: 1rem; transition: border-color 0.2s; }
+.show-hide-btn { position: absolute; top: 50%; right: 0.5rem; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0.5rem; display: flex; }
+.strength-meter { width: 100%; height: 8px; background-color: color-mix(in srgb, var(--border-color) 50%, transparent); border-radius: 4px; overflow: hidden; margin-top: 0.75rem; }
+.strength-bar { height: 100%; transition: width 0.4s ease-in-out, background-color 0.4s ease-in-out; border-radius: 4px; }
+.strength-bar.very-weak, .strength-bar.weak { background-color: var(--color-weak); } .strength-bar.medium { background-color: var(--color-medium); } .strength-bar.strong, .strength-bar.very-strong { background-color: var(--color-strong); }
+.strength-label { text-align: right; font-size: 0.9rem; margin: 0.5rem 0 1.5rem; color: var(--text-muted); }
+.policy-list { list-style: none; padding: 0; margin: 0 0 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.policy-list li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; transition: color 0.3s; position: relative; }
+.policy-list li.passed { color: var(--color-success); } .policy-list li.failed { color: var(--color-danger); }
+.options-group { border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.5rem 1.5rem; margin-top: 1.5rem; }
+.options-group legend { padding: 0 0.5rem; font-weight: 500; color: var(--text-muted); }
+.options-group .option-item { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; }
+.card-footer { background-color: color-mix(in srgb, var(--bg-secondary) 50%, var(--bg-color)); border-top: 1px solid var(--border-color); }
+.submit-button { width: 100%; padding: 0.85rem; border-radius: 6px; border: none; background-color: var(--accent-color); color: white; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s, opacity 0.2s; }
+.submit-button:disabled { background-color: var(--text-muted); opacity: 0.7; cursor: not-allowed; }
+.remove-rule-btn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); background: color-mix(in srgb, var(--border-color) 80%, transparent); color: var(--text-color); border: none; border-radius: 50%; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; transition: all 0.2s; }
+.policy-list li:hover .remove-rule-btn { opacity: 1; } .remove-rule-btn:hover { background: var(--color-danger); color: white; }
+.add-rule-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.75rem; margin-top: 1rem; }
+.add-rule-form button { background-color: var(--accent-color); color: white; border: none; border-radius: 6px; padding: 0.5rem 1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s; } .add-rule-form button:hover { background-color: var(--accent-hover); }
+.error-text { color: var(--color-danger); font-size: 0.875rem; margin: 0.75rem 0 0; text-align: center; }
+
+/* --- Footer --- */
+.app-footer { text-align: center; padding: 3rem 1.5rem; border-top: 1px solid var(--border-color); color: var(--text-muted); }
+.app-footer p { margin-bottom: 1.5rem; }
+
+/* src/App.css - ADD THIS TO THE END */
+
+/* --- Component Demo Section --- */
+.component-demo-section {
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.component-showcase {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: center;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.component-instance {
+  background-color: var(--bg-color);
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.component-code pre {
+  margin: 0;
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .component-showcase {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Override default component styles for better theme integration in the demo */
+[data-theme='dark'] .rpp-container {
+    --rpp-bg: #1a1a1a;
+    --rpp-border: #3a3a3a;
+    --rpp-text: rgba(255, 255, 255, 0.87);
+}
+[data-theme='light'] .rpp-container {
+    --rpp-bg: #ffffff;
+    --rpp-border: #e0e0e0;
+    --rpp-text: #2c3e50;
+}

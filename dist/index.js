@@ -1,7 +1,9 @@
 "use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -15,6 +17,14 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/index.ts
@@ -117,22 +127,94 @@ var usePasswordPolicy = (options = {}) => {
 
 // src/PasswordPolicyInput.tsx
 var import_react2 = require("react");
+var import_styled_components = __toESM(require("styled-components"));
 var import_jsx_runtime = require("react/jsx-runtime");
-var componentStyles = `
-.rpp-container { font-family: sans-serif; display: flex; flex-direction: column; gap: 0.75rem; --rpp-accent: #646cff; --rpp-success: #27ae60; --rpp-danger: #c0392b; --rpp-bg: #f9f9f9; --rpp-border: #e0e0e0; --rpp-text: #333; }
-.rpp-input-wrapper { position: relative; }
-.rpp-input { width: -webkit-fill-available; padding: 0.75rem; border: 1px solid var(--rpp-border); border-radius: 6px; font-size: 1rem; }
-.rpp-input:focus { border-color: var(--rpp-accent); outline: none; }
-.rpp-toggle-btn { position: absolute; top: 50%; right: 0.5rem; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0.5rem; color: #888; }
-.rpp-strength-meter { display: flex; gap: 0.25rem; height: 6px; }
-.rpp-strength-meter-segment { flex: 1; background-color: var(--rpp-border); border-radius: 3px; transition: background-color 0.3s; }
-.rpp-strength-meter-segment.filled.very-weak, .rpp-strength-meter-segment.filled.weak { background-color: #f39c12; }
-.rpp-strength-meter-segment.filled.medium { background-color: #d35400; }
-.rpp-strength-meter-segment.filled.strong, .rpp-strength-meter-segment.filled.very-strong { background-color: var(--rpp-success); }
-.rpp-requirements-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem; }
-.rpp-requirements-list li { display: flex; align-items: center; gap: 0.5rem; transition: color 0.2s; }
-.rpp-requirements-list li.passed { color: var(--rpp-success); }
-.rpp-requirements-list li.failed { color: var(--rpp-danger); }
+var STRENGTH_COLOR_MAP = {
+  "Very Weak": "var(--rpp-weak)",
+  "Weak": "var(--rpp-weak)",
+  "Medium": "var(--rpp-medium)",
+  "Strong": "var(--rpp-success)",
+  "Very Strong": "var(--rpp-success)"
+};
+var Container = import_styled_components.default.div`
+  /* CSS variables define the component's internal theme */
+  --rpp-accent: #646cff;
+  --rpp-success: #27ae60;
+  --rpp-danger: #c0392b;
+  --rpp-weak: #f39c12;
+  --rpp-medium: #d35400;
+  --rpp-bg: #f9f9f9;
+  --rpp-border: #e0e0e0;
+  --rpp-text: #333;
+  
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`;
+var InputWrapper = import_styled_components.default.div`
+  position: relative;
+`;
+var Input = import_styled_components.default.input`
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--rpp-border);
+  border-radius: 6px;
+  font-size: 1rem;
+  
+  &:focus {
+    border-color: var(--rpp-accent);
+    outline: none;
+  }
+`;
+var ToggleButton = import_styled_components.default.button`
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  color: #888;
+  display: flex;
+  align-items: center;
+`;
+var StrengthMeter = import_styled_components.default.div`
+  display: flex;
+  gap: 0.25rem;
+  height: 6px;
+`;
+var StrengthMeterSegment = import_styled_components.default.div`
+  flex: 1;
+  background-color: var(--rpp-border);
+  border-radius: 3px;
+  transition: background-color 0.3s;
+  
+  ${({ isFilled, strengthLabel }) => (
+  // FIX: Explicitly type props
+  isFilled && import_styled_components.css`
+      background-color: ${STRENGTH_COLOR_MAP[strengthLabel]};
+    `
+)}
+`;
+var RequirementsList = import_styled_components.default.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+`;
+var RequirementItem = import_styled_components.default.li`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 0.2s;
+  /* FIX: Explicitly type props */
+  color: ${({ passed }) => passed ? "var(--rpp-success)" : "var(--rpp-danger)"};
 `;
 var EyeIcon = () => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { xmlns: "http://www.w3.org/2000/svg", width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
   /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }),
@@ -151,41 +233,39 @@ var PasswordPolicyInput = ({
   className,
   ...restInputProps
 }) => {
-  (0, import_react2.useEffect)(() => {
-    const styleId = "react-password-policy-styles";
-    if (!document.getElementById(styleId)) {
-      const styleTag = document.createElement("style");
-      styleTag.id = styleId;
-      styleTag.innerHTML = componentStyles;
-      document.head.appendChild(styleTag);
-    }
-  }, []);
   const [password, setPassword] = (0, import_react2.useState)("");
   const [showPassword, setShowPassword] = (0, import_react2.useState)(false);
   const validation = usePasswordPolicy({ ...policyOptions, password });
-  const { policyState, strengthScore } = validation;
+  const { policyState, strengthScore, strengthLabel } = validation;
   (0, import_react2.useEffect)(() => {
-    if (onPasswordChange) {
-      onPasswordChange(password, validation);
-    }
+    onPasswordChange?.(password, validation);
   }, [password, validation, onPasswordChange]);
   const formatPolicyName = (name) => name.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: `rpp-container ${className || ""}`, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "rpp-input-wrapper", children: [
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Container, { className, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(InputWrapper, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-        "input",
+        Input,
         {
           type: showPassword ? "text" : "password",
-          className: "rpp-input",
           value: password,
-          onChange: (e) => setPassword(e.target.value),
+          onChange: handlePasswordChange,
           ...restInputProps
         }
       ),
-      showToggleButton && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", className: "rpp-toggle-btn", onClick: () => setShowPassword(!showPassword), children: showPassword ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(EyeOffIcon, {}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(EyeIcon, {}) })
+      showToggleButton && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ToggleButton, { type: "button", onClick: () => setShowPassword(!showPassword), children: showPassword ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(EyeOffIcon, {}) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(EyeIcon, {}) })
     ] }),
-    showStrengthMeter && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "rpp-strength-meter", children: Array.from({ length: 5 }).map((_, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: `rpp-strength-meter-segment ${strengthScore > index ? `filled ${validation.strengthLabel.replace(" ", "-").toLowerCase()}` : ""}` }, index)) }),
-    showRequirementsList && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", { className: "rpp-requirements-list", children: Object.entries(policyState).map(([name, passed]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", { className: passed ? "passed" : "failed", children: [
+    showStrengthMeter && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StrengthMeter, { children: Array.from({ length: 5 }).map((_, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      StrengthMeterSegment,
+      {
+        isFilled: strengthScore > index,
+        strengthLabel
+      },
+      index
+    )) }),
+    showRequirementsList && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(RequirementsList, { children: Object.entries(policyState).map(([name, passed]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(RequirementItem, { passed, children: [
       passed ? "\u2713" : "\u2717",
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: formatPolicyName(name) })
     ] }, name)) })

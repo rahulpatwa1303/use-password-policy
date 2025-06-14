@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://rahulpatwa1303.github.io/use-password-policy/",
+   "homepage": "https://rahulpatwa1303.github.io/use-password-policy/",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -15,7 +15,6 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1",
     "react-router-dom": "^6.23.1",
     "styled-components": "^6.1.11",
     "use-password-policy": "file:../"

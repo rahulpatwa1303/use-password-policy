@@ -26,7 +26,8 @@
     "url": "https://github.com/rahulpatwa1303/use-password-policy/issues"
   },
   "workspaces": [
-    "demo"
+    "demo",
+    "packages/*"
   ],
   "main": "dist/index.js",
   "module": "dist/index.mjs",

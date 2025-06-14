@@ -38,12 +38,16 @@ jobs:
       - name: Install dependencies (from monorepo root)
         run: npm install
 
-      # --- START OF FIX ---
+      # --- START OF THE NEW, ROBUST FIX ---
       - name: Build the demo application
-        # Run the build command FROM THE ROOT, but target the 'demo' workspace
-        # This ensures it finds the 'react-scripts' executable in the root node_modules
-        run: npm run build --workspace=demo
-      # --- END OF FIX ---
+        # Change to the demo directory first
+        working-directory: ./demo
+        run: |
+          # Manually add the root node_modules/.bin to the PATH for this step.
+          # This explicitly tells the runner where to find 'react-scripts'.
+          export PATH=$PATH:../node_modules/.bin
+          npm run build
+      # --- END OF THE NEW, ROBUST FIX ---
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -52,7 +56,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           # The path is still relative to the repository root
-          path: 'demo/build' # <-- IMPORTANT: Ensure this is 'build' for CRA
+          path: 'demo/build' # For Create React App
 
       - name: Deploy to GitHub Pages
         id: deployment

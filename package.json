@@ -39,8 +39,7 @@
     "clean": "rm -rf dist",
     "build": "npm run clean && tsup src/index.ts --format cjs,esm --dts",
     "dev": "npm run build -- --watch",
-    "prepublishOnly": "npm run build",
-    "deploy:demo": "cd demo && npm install && npm run deploy"
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
     "react": ">=16.8.0",

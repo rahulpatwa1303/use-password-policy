@@ -1,5 +1,4 @@
 # .github/workflows/deploy-demo.yml
-
 name: Deploy Demo App to GitHub Pages
 
 on:
@@ -28,6 +27,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Ensure the full repo is checked out
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -35,19 +36,12 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Install dependencies (from monorepo root)
-        run: npm install
+      - name: Install dependencies
+        run: npm install --workspaces
 
-      # --- START OF THE NEW, ROBUST FIX ---
       - name: Build the demo application
-        # Change to the demo directory first
         working-directory: ./demo
-        run: |
-          # Manually add the root node_modules/.bin to the PATH for this step.
-          # This explicitly tells the runner where to find 'react-scripts'.
-          export PATH=$PATH:../node_modules/.bin
-          npm run build
-      # --- END OF THE NEW, ROBUST FIX ---
+        run: npm run build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -55,8 +49,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # The path is still relative to the repository root
-          path: 'demo/build' # For Create React App
+          path: 'demo/dist' # Vite outputs to 'dist'
 
       - name: Deploy to GitHub Pages
         id: deployment

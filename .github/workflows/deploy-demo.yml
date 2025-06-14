@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'demo/**'
-      - 'package-lock.json' # Trigger on lock file changes too
+      - 'package-lock.json'
   workflow_dispatch:
 
 permissions:
@@ -32,17 +32,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          # Use a cache key based on the lock file for better reliability
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        # Use 'npm ci' for reproducible builds in CI environments
         run: npm ci --workspaces
 
+      # THIS IS THE KEY CHANGE
       - name: Build the demo application
-        working-directory: ./demo
-        run: /npm run build
+        run: npm run build --workspace=demo
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -50,8 +48,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # This path is correct, Vite builds to 'demo/dist'
-          path: 'demo/dist'
+          path: 'demo/dist' # Vite outputs to 'dist', this is correct
 
       - name: Deploy to GitHub Pages
         id: deployment

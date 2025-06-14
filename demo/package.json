@@ -6,7 +6,7 @@
    "homepage": "https://rahulpatwa1303.github.io/use-password-policy/",
   "scripts": {
     "dev": "vite",
-    "build": "react-scripts build",
+    "build": "tsc && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",

@@ -11,11 +11,6 @@ A powerful, lightweight, and fully customizable solution for real-time password 
 
 ### [➡️ View Live Demo & Playground](https://rahulpatwa1303.github.io/use-password-policy/)
 
-*(Replace this with your final GitHub Pages URL)*
-
-
-*(**Action Needed:** Record a GIF of your awesome demo and replace this link!)*
-
 ---
 
 ## ✨ Why `use-password-policy`?

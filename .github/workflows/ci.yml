@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    name: Test (React ${{ matrix.react }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        react: ['18', '19']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Use React ${{ matrix.react }}
+        if: matrix.react != '18'
+        run: npm i --no-save --no-workspaces react@${{ matrix.react }} react-dom@${{ matrix.react }} @types/react@${{ matrix.react }} @types/react-dom@${{ matrix.react }}
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Check package exports
+        run: npx --yes publint --strict && npx --yes @arethetypeswrong/cli --pack . --exclude-entrypoints styles.css

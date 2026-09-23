@@ -483,14 +483,26 @@ pre { background-color: var(--code-bg); padding: 1.5rem; border-radius: 8px; ove
   }
 }
 
-/* Override default component styles for better theme integration in the demo */
-[data-theme='dark'] .rpp-container {
-    --rpp-bg: #1a1a1a;
-    --rpp-border: #3a3a3a;
-    --rpp-text: rgba(255, 255, 255, 0.87);
+/* Theme the library component with its CSS variables */
+.demo-rpp {
+  --rpp-bg: var(--bg-color);
+  --rpp-border: var(--border-color);
+  --rpp-text: var(--text-color);
+  --rpp-muted: var(--text-muted);
+  --rpp-accent: var(--accent-color);
 }
-[data-theme='light'] .rpp-container {
-    --rpp-bg: #ffffff;
-    --rpp-border: #e0e0e0;
-    --rpp-text: #2c3e50;
+[data-theme='dark'] .demo-rpp {
+  --rpp-success: #2ecc71;
+  --rpp-danger: #ff6b5b;
+  --rpp-weak: #f39c12;
+  --rpp-medium: #f1c40f;
 }
+.preset-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.preset-buttons button {
+  background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color);
+  border-radius: 6px; padding: 0.4rem 0.8rem; cursor: pointer; font: inherit; font-size: 0.875rem;
+}
+.preset-buttons button:hover { border-color: var(--accent-color); }
+.breach-status { font-size: 0.875rem; margin: -0.75rem 0 1rem; color: var(--text-muted); }
+.breach-status.safe { color: var(--color-success); }
+.breach-status.pwned { color: var(--color-danger); font-weight: 600; }

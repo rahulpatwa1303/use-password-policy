@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-   "homepage": "https://rahulpatwa1303.github.io/use-password-policy/",
+  "homepage": "https://rahulpatwa1303.github.io/use-password-policy/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -16,13 +16,14 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.23.1",
-    "styled-components": "^6.1.11",
-    "use-password-policy": "file:../"
+    "use-password-policy": "file:../",
+    "@zxcvbn-ts/core": "^4.2.0",
+    "@zxcvbn-ts/language-common": "^4.1.3",
+    "@zxcvbn-ts/language-en": "^4.1.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
-    "@types/styled-components": "^5.1.34",
     "@vitejs/plugin-react": "^4.2.1",
     "vite": "^5.2.11",
     "eslint": "^8.57.0",

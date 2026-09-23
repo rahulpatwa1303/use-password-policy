@@ -1,199 +1,301 @@
 # use-password-policy
 
 [![npm version](https://img.shields.io/npm/v/use-password-policy.svg)](https://www.npmjs.com/package/use-password-policy)
-[![npm downloads](https://img.shields.io/npm/dm/use-password-policy.svg)](https://www.npmjs.com/package/use-password-policy)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
+[![CI](https://github.com/rahulpatwa1303/use-password-policy/actions/workflows/ci.yml/badge.svg)](https://github.com/rahulpatwa1303/use-password-policy/actions/workflows/ci.yml)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/use-password-policy)](https://bundlephobia.com/package/use-password-policy)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-A powerful, lightweight, and fully customizable solution for real-time password strength validation in React. Comes with a flexible hook and a zero-config, all-in-one UI component.
+**Write your password rules once. Use them in your React form and on your server.**
+
+- A hook and an accessible drop-in `<PasswordPolicyInput />`
+- A framework-free `validatePassword()` for Node, edge functions and API routes
+- A **NIST SP 800-63B** preset, a common-password blocklist and **Have I Been Pwned** breach checks
+- Optional **zxcvbn** scoring, so "strength" means how hard a password is to guess, not how many boxes it ticks
+- **Zod** and **react-hook-form** helpers
+- No runtime dependencies. About 3 KB gzipped for the core, about 5.5 KB with the React parts.
+
+### [➡️ Live demo & playground](https://rahulpatwa1303.github.io/use-password-policy/)
+
+![PasswordPolicyInput demo](https://raw.githubusercontent.com/rahulpatwa1303/use-password-policy/master/.github/assets/demo.gif)
 
 ---
 
-### [➡️ View Live Demo & Playground](https://rahulpatwa1303.github.io/use-password-policy/)
-
----
-
-## ✨ Why `use-password-policy`?
-
--   **🚀 Two Ways to Use:** Get full control with the `usePasswordPolicy` hook, or get running in seconds with the drop-in `<PasswordPolicyInput />` component.
--   **🔧 Fully Customizable:** Easily configure policies like min-length, character requirements, and even add your own complex rules with custom functions or regex.
--   **💅 Zero-Config Styling:** The UI component works out-of-the-box with self-contained styles, but is easily overridable.
--   **✅ Rich & Reactive Feedback:** Provides a simple `isValid` boolean, a detailed `policyState` object, and a `strengthScore` to easily build any UI you can imagine.
--   **♿ Accessibility First:** The component is designed with accessibility in mind, ready to be paired with a `<label>`.
--   **📦 Tiny & Performant:** Zero dependencies and built with performance in mind, using `useMemo` to prevent unnecessary recalculations.
-
-## 💾 Installation
+## Install
 
 ```bash
 npm install use-password-policy
-# or
-yarn add use-password-policy
 ```
 
-## 🚀 Usage
+React 16.8+ is needed for the hook and component. It is tested on React 18 and 19. The `use-password-policy/core` entry doesn't need React at all.
 
-You have two great ways to implement password validation.
+## Quick start
 
-### 1. The Easy Way: `<PasswordPolicyInput />` Component
-
-For maximum speed, drop the component directly into your form. It includes the input, strength meter, and requirements list all-in-one.
+### 1. Drop-in component
 
 ```tsx
 import { PasswordPolicyInput } from 'use-password-policy';
 
-function MyForm() {
+function SignUp() {
   const [isValid, setIsValid] = useState(false);
 
   return (
     <form>
-      <label htmlFor="signup-password">Create a Password</label>
+      <label htmlFor="password">Password</label>
       <PasswordPolicyInput
-        id="signup-password"
+        id="password"
         name="password"
-        placeholder="Enter a secure password..."
-        onPasswordChange={(_, validation) => {
-          setIsValid(validation.isValid);
-        }}
-        policyOptions={{ minLength: 8, numberCheck: true, specialCharCheck: true }}
+        policyOptions={{ minLength: 10 }}
+        onPasswordChange={(_, v) => setIsValid(v.isValid)}
       />
-      <button type="submit" disabled={!isValid}>
-        Sign Up
-      </button>
+      <button disabled={!isValid}>Sign up</button>
     </form>
   );
 }
 ```
 
-### 2. The Powerful Way: `usePasswordPolicy` Hook
+The component comes with its own styles, a strength meter, a checklist, and a show/hide button that screen readers can use.
 
-For complete control over your UI, use the hook and build your own components.
+### 2. Hook (build your own UI)
 
 ```tsx
 import { usePasswordPolicy } from 'use-password-policy';
 
-function MyCustomForm() {
-  const [password, setPassword] = useState('');
-  const { isValid, strengthLabel, policyState } = usePasswordPolicy({
-    password: password,
-    minLength: 10,
-    uppercaseCheck: true,
-    customRules: [{ name: 'noSpaces', test: (p) => !/\\s/.test(p) }],
-  });
+const { isValid, requirements, strengthLabel, strengthPercent } = usePasswordPolicy({
+  password,
+  minLength: 10,
+  customRules: [{ name: 'noSpaces', message: 'No spaces', test: (p) => !/\s/.test(p) }],
+});
 
-  return (
-    <form>
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <div>Strength: {strengthLabel}</div>
-      <ul>
-        {Object.entries(policyState).map(([rule, passed]) => (
-          <li key={rule} style={{ color: passed ? 'green' : 'red' }}>
-            {rule}
-          </li>
-        ))}
-      </ul>
-      <button type="submit" disabled={!isValid}>
-        Submit
-      </button>
-    </form>
-  );
+<ul>
+  {requirements.map((r) => (
+    <li key={r.name} style={{ color: r.passed ? 'green' : 'crimson' }}>{r.message}</li>
+  ))}
+</ul>
+```
+
+### 3. The same policy on the server
+
+```ts
+// password-policy.ts — shared by client and server
+import { presets, type PasswordPolicyOptions } from 'use-password-policy/core';
+export const policy: PasswordPolicyOptions = { ...presets.nist };
+```
+
+```ts
+// api/sign-up.ts (Node, Next.js route handler, Express, Cloudflare Worker…)
+import { validatePassword } from 'use-password-policy/core';
+import { policy } from './password-policy';
+
+const { isValid, errors } = validatePassword(body.password, policy);
+if (!isValid) return Response.json({ errors }, { status: 400 });
+```
+
+`use-password-policy/core` doesn't import React, so it's safe in server bundles.
+
+## Presets
+
+```ts
+import { presets } from 'use-password-policy';
+
+usePasswordPolicy({ ...presets.nist, password });          // NIST, password used on its own
+usePasswordPolicy({ ...presets.nistMfa, password });       // NIST, password is one factor of MFA
+usePasswordPolicy({ ...presets.classic, password });       // 8+ chars, upper, lower, number, symbol (the default)
+```
+
+| Preset | Min | Max | Composition rules | Blocks common passwords |
+| --- | --- | --- | --- | --- |
+| `classic` (default) | 8 | – | upper, lower, number, symbol | no |
+| `nist` | 15 | 64 | none | yes |
+| `nistMfa` | 8 | 64 | none | yes |
+
+The NIST presets follow [SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html). It asks for length and a blocklist check, and says not to require "mixtures of different character types".
+
+## Security add-ons
+
+### Block common passwords
+
+```ts
+usePasswordPolicy({ password, commonPasswordCheck: true });
+```
+
+This uses a small built-in list of the most common passwords and base words. It also catches simple variations such as `Password123!`, `P@ssw0rd`, `123qwerty` and `Monkey!!`. Pass `commonPasswords: [...]` to use your own list, for example your product name.
+
+### Check breached passwords (Have I Been Pwned)
+
+```tsx
+import { usePwnedPassword } from 'use-password-policy';
+
+const pwned = usePwnedPassword(password, { enabled: isValid }); // debounced, cancels stale requests
+// pwned.status: 'idle' | 'checking' | 'safe' | 'pwned' | 'error'
+{pwned.isPwned && <p>Seen {pwned.count.toLocaleString()} times in data breaches. Pick another.</p>}
+```
+
+On the server: `await checkPwnedPassword(password)` from `use-password-policy/core` returns the breach count.
+Only the first 5 characters of the password's SHA-1 hash are sent ([k-anonymity](https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange)), never the password. It needs `crypto.subtle`, which means HTTPS or `localhost` in browsers and Node 20+ on the server.
+
+### Real strength scoring with zxcvbn
+
+A checklist can't tell `Password1!` apart from a strong password. [zxcvbn](https://github.com/zxcvbn-ts/zxcvbn) can. Add it yourself (it's large, so it isn't bundled) and wrap it with `fromZxcvbn`:
+
+```ts
+import { ZxcvbnFactory } from '@zxcvbn-ts/core';
+import * as common from '@zxcvbn-ts/language-common';
+import * as en from '@zxcvbn-ts/language-en';
+import { fromZxcvbn } from 'use-password-policy';
+
+const zxcvbn = new ZxcvbnFactory({
+  dictionary: { ...common.dictionary, ...en.dictionary },
+  graphs: common.adjacencyGraphs,
+  translations: en.translations,
+});
+const strengthEstimator = fromZxcvbn(zxcvbn); // create once, outside your component
+
+usePasswordPolicy({ password, strengthEstimator, minStrength: 3 });
+```
+
+With an estimator, `strengthLabel` and `strengthPercent` come from its score (0–4). `minStrength` adds a "Hard to guess" requirement, and `estimate.feedback` gives you a hint to show the user. `fromZxcvbn` also accepts a plain function, such as the original `zxcvbn` package.
+
+## Form libraries
+
+```ts
+import { z } from 'zod';
+import { zodPasswordRule, passwordValidator } from 'use-password-policy/core';
+
+// Zod 3 or 4: one issue per failed rule
+const schema = z.object({ password: z.string().superRefine(zodPasswordRule(policy)) });
+
+// react-hook-form: returns true or the first error message
+register('password', { validate: passwordValidator(policy) });
+```
+
+Neither helper imports Zod or react-hook-form, so they add no dependencies.
+
+## Confirm-password field
+
+```ts
+usePasswordPolicy({ password, confirmPassword });  // adds a "Passwords match" requirement
+```
+
+## Custom messages & i18n
+
+Every requirement has a readable message. You can override any of them with a string or a function:
+
+```ts
+usePasswordPolicy({
+  password,
+  messages: {
+    minLength: (o) => `Mindestens ${o.minLength} Zeichen`,
+    uppercase: 'Ein Großbuchstabe',
+  },
+});
+```
+
+Rule names: `minLength`, `maxLength`, `uppercase`, `lowercase`, `number`, `specialChar`, `notCommon`, `match`, `strength`, plus your custom rule names.
+
+## API
+
+### Options (`PasswordPolicyOptions`)
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `password` | `string` | `''` | Password to check (hook only). |
+| `minLength` | `number` | `8` | Minimum length. `0` turns it off. |
+| `maxLength` | `number` | `0` | Maximum length. `0` means no maximum. |
+| `lowercaseCheck` | `boolean` | `true` | Require a lowercase letter. |
+| `uppercaseCheck` | `boolean` | `true` | Require an uppercase letter. |
+| `numberCheck` | `boolean` | `true` | Require a digit. |
+| `specialCharCheck` | `boolean` | `true` | Require a special character. |
+| `commonPasswordCheck` | `boolean` | `false` | Reject common passwords. |
+| `commonPasswords` | `string[]` | built-in | Replace the blocklist. |
+| `confirmPassword` | `string` | – | Adds a `match` rule when set. |
+| `strengthEstimator` | `(pw) => { score, feedback? }` | – | For example `fromZxcvbn(zxcvbn)`. |
+| `minStrength` | `0–4` | – | With an estimator: minimum score required. |
+| `customRules` | `PolicyRule[]` | `[]` | `{ name, test, message? }` |
+| `messages` | `Record<string, string \| (o) => string>` | – | Override requirement text. |
+| `lowercaseRegex` / `uppercaseRegex` / `numberRegex` / `specialCharRegex` | `RegExp` | – | Change what counts as each character type. |
+
+### Result (hook and `validatePassword`)
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `isValid` | `boolean` | `true` only when every active rule passes. |
+| `requirements` | `{ name, passed, message }[]` | Ordered checklist, ready to render. |
+| `errors` | `string[]` | Messages of the failed rules. |
+| `policyState` | `Record<string, boolean>` | Pass/fail by rule name. |
+| `strengthLabel` | `'Very Weak' \| 'Weak' \| 'Medium' \| 'Strong' \| 'Very Strong'` | |
+| `strengthPercent` | `number` (0–1) | Fill for a meter. |
+| `strengthScore` | `number` | Number of rules passed. |
+| `estimate` | `{ score, feedback? }` | Only with `strengthEstimator`. |
+
+### `<PasswordPolicyInput />` props
+
+It accepts every normal `<input>` prop (`id`, `name`, `placeholder`, `autoComplete`, `onBlur`, and so on) and forwards `ref` to the input. It also takes:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `policyOptions` | `PasswordPolicyOptions` | `{}` | Same options as the hook. |
+| `onPasswordChange` | `(password, validation) => void` | – | Called on every change with the fresh result. |
+| `value` / `defaultValue` | `string` | – | Controlled or uncontrolled. `onChange` works as usual. |
+| `showStrengthMeter` | `boolean` | `true` | |
+| `showStrengthLabel` | `boolean` | `false` | Shows the label ("Strong") under the meter. |
+| `showRequirementsList` | `boolean` | `true` | |
+| `showToggleButton` | `boolean` | `true` | Show/hide password button. |
+| `toggleLabels` | `{ show, hide }` | `Show password` / `Hide password` | Accessible labels for the button. |
+| `className` | `string` | – | Class on the wrapper. |
+| `inputClassName` | `string` | – | Class on the `<input>`. |
+| `unstyled` | `boolean` | `false` | Leaves out the built-in CSS. |
+
+Accessibility: the checklist is linked to the input with `aria-describedby`, the meter has `role="meter"`, `aria-invalid` is set once the user types an invalid password, and each item announces "met" or "not met".
+
+## Styling
+
+The component ships plain CSS with no CSS-in-JS. Theme it with CSS variables from any class:
+
+```css
+.my-password {
+  --rpp-accent: #0ea5e9;
+  --rpp-success: #16a34a;
+  --rpp-danger: #dc2626;
+  --rpp-weak: #ea580c;
+  --rpp-medium: #ca8a04;
+  --rpp-bg: #fff;
+  --rpp-border: #d4d4d8;
+  --rpp-text: #18181b;
+  --rpp-muted: #71717a;
+  --rpp-radius: 8px;
 }
 ```
 
-## 📖 API Reference
-
-### `<PasswordPolicyInput />` Props
-
-| Prop                   | Type                                                       | Default | Description                                                               |
-| ---------------------- | ---------------------------------------------------------- | ------- | ------------------------------------------------------------------------- |
-| `policyOptions`        | `PasswordPolicyOptions`                                    | `{}`    | Same options as the `usePasswordPolicy` hook to control validation logic. |
-| `onPasswordChange`     | `(password: string, validation: HookReturnValue) => void`  | `null`  | Callback fired on change, providing the password and full validation state. |
-| `showStrengthMeter`    | `boolean`                                                  | `true`  | Toggles the visibility of the strength meter bar.                         |
-| `showRequirementsList` | `boolean`                                                  | `true`  | Toggles the visibility of the pass/fail requirements list.              |
-| `showToggleButton`     | `boolean`                                                  | `true`  | Toggles the visibility of the show/hide password button.                  |
-| `...restInputProps`    | `React.InputHTMLAttributes`                                |         | All other standard input props (`id`, `name`, `placeholder`, etc.) are passed to the `<input>`. |
-
-<br/>
-
-### `usePasswordPolicy` Hook
-
-#### Options (`PasswordPolicyOptions`)
-
-| Prop                   | Type           | Default    | Description                                                 |
-| ---------------------- | -------------- | ---------- | ----------------------------------------------------------- |
-| `password`             | `string`       | `''`       | The password string to validate.                            |
-| `minLength`            | `number`       | `8`        | Minimum password length.                                    |
-| `lowercaseCheck`       | `boolean`      | `true`     | Requires at least one lowercase letter.                     |
-| `uppercaseCheck`       | `boolean`      | `true`     | Requires at least one uppercase letter.                     |
-| `numberCheck`          | `boolean`      | `true`     | Requires at least one number.                               |
-| `specialCharCheck`     | `boolean`      | `true`     | Requires at least one special character.                    |
-| `customRules`          | `PolicyRule[]` | `[]`       | An array of custom validation rules.                        |
-
-#### Return Value (`HookReturnValue`)
-
-| Key             | Type                                                         | Description                                                               |
-| --------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| `isValid`       | `boolean`                                                    | `true` only if all active policies are met.                               |
-| `strengthScore` | `number`                                                     | The number of policies that have passed.                                  |
-| `strengthLabel` | `'Very Weak' \| 'Weak' \| 'Medium' \| 'Strong' \| 'Very Strong'` | A human-readable strength label.                                          |
-| `policyState`   | `object`                                                     | An object with boolean flags for each active policy (`{ minLength: true, uppercase: false, ... }`). |
-
-## 🎨 Customizing Styles
-
-The `<PasswordPolicyInput />` component is built with `styled-components` for complete style isolation and easy customization. You have two primary ways to apply your own styles:
-
-### 1. Theming with `styled()`
-
-For deep customization, wrap the component with `styled()` from `styled-components`. You can easily change the theme by overriding the internal CSS variables, or target any internal element for specific changes.
-
-```jsx
-import styled from 'styled-components';
-import { PasswordPolicyInput } from 'use-password-policy';
-
-const MyStyledInput = styled(PasswordPolicyInput)`
-  /* Override theme variables */
-  --rpp-accent: #ff6347; // Use a tomato red accent
-
-  /* Override specific elements */
-  input {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-`;
-
-// Then use <MyStyledInput /> in your app!
+```tsx
+<PasswordPolicyInput className="my-password" />
 ```
 
-**Available CSS Variables for Theming:**
+Each part has a stable class you can target: `.rpp-root`, `.rpp-input`, `.rpp-toggle`, `.rpp-meter`, `.rpp-segment`, `.rpp-requirements`, `.rpp-requirement` (with `[data-passed]`). The built-in selectors have low specificity, so `.my-password .rpp-input { … }` always wins. This works with Tailwind, CSS Modules and styled-components (`styled(PasswordPolicyInput)` still works).
 
-| Variable          | Default    | Description                        |
-| ----------------- | ---------- | ---------------------------------- |
-| `--rpp-accent`    | `#646cff`  | Accent color for focus, buttons.   |
-| `--rpp-success`   | `#27ae60`  | Color for passed requirements.     |
-| `--rpp-danger`    | `#c0392b`  | Color for failed requirements.     |
-| `--rpp-weak`      | `#f39c12`  | Strength meter color for weak.     |
-| `--rpp-medium`    | `#d35400`  | Strength meter color for medium.   |
-| `--rpp-bg`        | `#f9f9f9`  | Component's background color.      |
-| `--rpp-border`    | `#e0e0e0`  | Component's border color.          |
-| `--rpp-text`      | `#333`     | Component's main text color.       |
+To use your own stylesheet instead of the built-in one, pass `unstyled` and optionally start from the shipped file: `import 'use-password-policy/styles.css'`.
 
-### 2. Applying Custom Class Names
+For **Next.js App Router**, the React entry is marked `'use client'`, and `use-password-policy/core` can be used in Server Components and route handlers.
 
-To apply layout styles (like margins or flex properties), simply pass a `className`. This works perfectly with utility-class frameworks like Tailwind CSS.
+## Upgrading from v2
 
-```jsx
-import { PasswordPolicyInput } from 'use-password-policy';
+- **`styled-components` is no longer required.** You can uninstall it if nothing else in your app uses it.
+- The component's DOM and class names changed (`.rpp-*`). The `--rpp-*` theme variables still work.
+- `onPasswordChange` now runs on user changes only, not on mount.
+- The hook's options and return values are backward compatible. New fields were added: `requirements`, `errors`, `strengthPercent`, `estimate`.
 
-// Example with Tailwind CSS or a custom utility class
-<PasswordPolicyInput className="mb-4 w-full" />
+See the [CHANGELOG](./CHANGELOG.md).
+
+## Contributing
+
+Issues and PRs are welcome. To get started:
+
+```bash
+npm install
+npm test          # vitest
+npm run build     # tsup
+npm run dev -w demo
 ```
 
-## ❤️ Contributing
+## License
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/rahulpatwa1303/use-password-policy/issues).
-
-## 📄 License
-
-This project is [MIT](https://github.com/rahulpatwa1303/use-password-policy/blob/main/LICENSE) licensed.
+[MIT](./LICENSE) © Rahul Patwa

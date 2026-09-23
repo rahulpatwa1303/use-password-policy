@@ -1,188 +1,181 @@
-// src/PasswordPolicyInput.tsx
-import React, { useState, useEffect, FC } from 'react';
-import styled, { css } from 'styled-components';
-import { usePasswordPolicy } from './use-password-policy';
-import { PasswordPolicyOptions, HookReturnValue } from './types';
+import * as React from 'react';
+import { forwardRef, useState } from 'react';
+import { validatePassword } from './core';
+import { passwordPolicyInputCss } from './styles';
+import type { PasswordPolicyOptions, HookReturnValue } from './types';
 
-// --- Styled Components Definitions ---
-// All styles are now encapsulated here with unique class names.
-
-const STRENGTH_COLOR_MAP: Record<HookReturnValue['strengthLabel'], string> = {
-  'Very Weak': 'var(--rpp-weak)', 'Weak': 'var(--rpp-weak)', 'Medium': 'var(--rpp-medium)', 'Strong': 'var(--rpp-success)', 'Very Strong': 'var(--rpp-success)',
+let idCounter = 0;
+const useFallbackId = (): string => {
+  const [id] = useState(() => `rpp-${++idCounter}`);
+  return id;
 };
+// React 18+ has useId (SSR-safe); fall back to a counter on older versions.
+const useStableId: () => string =
+  (React as unknown as { useId?: () => string }).useId ?? useFallbackId;
 
-const Container = styled.div`
-  /* CSS variables define the component's internal theme */
-  --rpp-accent: #646cff;
-  --rpp-success: #27ae60;
-  --rpp-danger: #c0392b;
-  --rpp-weak: #f39c12;
-  --rpp-medium: #d35400;
-  --rpp-bg: #f9f9f9;
-  --rpp-border: #e0e0e0;
-  --rpp-text: #333;
-  
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
+const EyeIcon = () => (
+  <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+const EyeOffIcon = () => (
+  <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+);
 
-const InputWrapper = styled.div`
-  position: relative;
-`;
-
-const Input = styled.input`
-  box-sizing: border-box;
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--rpp-border);
-  border-radius: 6px;
-  font-size: 1rem;
-  
-  &:focus {
-    border-color: var(--rpp-accent);
-    outline: none;
-  }
-`;
-
-const ToggleButton = styled.button`
-  position: absolute;
-  top: 50%;
-  right: 0.5rem;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  color: #888;
-  display: flex;
-  align-items: center;
-`;
-
-const StrengthMeter = styled.div`
-  display: flex;
-  gap: 0.25rem;
-  height: 6px;
-`;
-
-interface StrengthMeterSegmentProps {
-  isFilled: boolean;
-  strengthLabel: HookReturnValue['strengthLabel'];
-}
-const StrengthMeterSegment = styled.div<StrengthMeterSegmentProps>`
-  flex: 1;
-  background-color: var(--rpp-border);
-  border-radius: 3px;
-  transition: background-color 0.3s;
-  
-  ${({ isFilled, strengthLabel }: StrengthMeterSegmentProps) => // FIX: Explicitly type props
-    isFilled &&
-    css`
-      background-color: ${STRENGTH_COLOR_MAP[strengthLabel]};
-    `}
-`;
-
-const RequirementsList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-`;
-
-interface RequirementItemProps {
-  passed: boolean;
-}
-const RequirementItem = styled.li<RequirementItemProps>`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: color 0.2s;
-  /* FIX: Explicitly type props */
-  color: ${({ passed }: RequirementItemProps) => (passed ? 'var(--rpp-success)' : 'var(--rpp-danger)')};
-`;
-// --- Helper Components & Icons --- (Unchanged)
-const EyeIcon: FC = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
-const EyeOffIcon: FC = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>;
-
-// --- Component Props --- (Unchanged)
-export interface PasswordPolicyInputProps extends React.ComponentPropsWithoutRef<'input'> {
+export interface PasswordPolicyInputProps
+  extends Omit<React.ComponentPropsWithoutRef<'input'>, 'type' | 'value' | 'defaultValue'> {
+  /** Controlled value. Leave undefined to let the component manage its own state. */
+  value?: string;
+  /** Initial value when uncontrolled. */
+  defaultValue?: string;
+  /** Same options as `usePasswordPolicy`. */
   policyOptions?: PasswordPolicyOptions;
+  /** Fires on every change with the new password and its full validation result. */
   onPasswordChange?: (password: string, validation: HookReturnValue) => void;
+  /** Default `true`. */
   showStrengthMeter?: boolean;
+  /** Show the strength label ("Strong") under the meter. Default `false`. */
+  showStrengthLabel?: boolean;
+  /** Default `true`. */
   showRequirementsList?: boolean;
+  /** Default `true`. */
   showToggleButton?: boolean;
+  /** Accessible labels for the show/hide button. */
+  toggleLabels?: { show: string; hide: string };
+  /** Skip the built-in CSS (class names stay). Import `use-password-policy/styles.css` or bring your own. */
+  unstyled?: boolean;
+  /** Class for the outer wrapper. */
+  className?: string;
+  /** Extra class for the <input> itself. */
+  inputClassName?: string;
 }
 
-// --- The Main Component (Now uses Styled Components) ---
-export const PasswordPolicyInput: FC<PasswordPolicyInputProps> = ({
-  policyOptions,
-  onPasswordChange,
-  showStrengthMeter = true,
-  showRequirementsList = true,
-  showToggleButton = true,
-  className,
-  ...restInputProps
-}) => {
-  // The useEffect for injecting styles is now gone!
-  
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  
-  const validation = usePasswordPolicy({ ...policyOptions, password });
-  const { policyState, strengthScore, strengthLabel } = validation;
+const strengthKey = (label: string) => label.toLowerCase().replace(/\s+/g, '-');
 
-  useEffect(() => {
-    onPasswordChange?.(password, validation);
-  }, [password, validation, onPasswordChange]);
+export const PasswordPolicyInput = forwardRef<HTMLInputElement, PasswordPolicyInputProps>(
+  function PasswordPolicyInput(
+    {
+      value,
+      defaultValue,
+      policyOptions,
+      onPasswordChange,
+      onChange,
+      showStrengthMeter = true,
+      showStrengthLabel = false,
+      showRequirementsList = true,
+      showToggleButton = true,
+      toggleLabels = { show: 'Show password', hide: 'Hide password' },
+      unstyled = false,
+      className,
+      inputClassName,
+      id,
+      'aria-describedby': ariaDescribedBy,
+      ...inputProps
+    },
+    ref,
+  ) {
+    const generatedId = useStableId();
+    const inputId = id ?? `${generatedId}-input`;
+    const listId = `${generatedId}-requirements`;
+    const feedbackId = `${generatedId}-feedback`;
 
-  const formatPolicyName = (name: string) => name.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
+    const isControlled = value !== undefined;
+    const [internalValue, setInternalValue] = useState(defaultValue ?? '');
+    const password = isControlled ? value : internalValue;
+    const [visible, setVisible] = useState(false);
 
-    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => { 
-    setPassword(e.target.value);
-  };
+    const validation = validatePassword(password, policyOptions);
+    const { requirements, strengthPercent, strengthLabel, isValid, estimate } = validation;
 
-  return (
-    <Container className={className}>
-      <InputWrapper>
-        <Input
-          type={showPassword ? 'text' : 'password'}
-          value={password}
-           onChange={handlePasswordChange} 
-          {...restInputProps}
-        />
-        {showToggleButton && (
-          <ToggleButton type="button" onClick={() => setShowPassword(!showPassword)}>
-            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-          </ToggleButton>
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const next = e.target.value;
+      if (!isControlled) setInternalValue(next);
+      onChange?.(e);
+      onPasswordChange?.(next, { password: next, ...validatePassword(next, policyOptions) });
+    };
+
+    const segments = 5;
+    const filled = strengthPercent > 0 ? Math.max(1, Math.round(strengthPercent * segments)) : 0;
+    const feedback = password && estimate?.feedback;
+
+    const describedBy =
+      [ariaDescribedBy, showRequirementsList ? listId : null, feedback ? feedbackId : null]
+        .filter(Boolean)
+        .join(' ') || undefined;
+
+    const rootClass = className ? `rpp-root ${className}` : 'rpp-root';
+
+    return (
+      <div className={rootClass} data-strength={strengthKey(strengthLabel)} data-valid={isValid || undefined}>
+        {!unstyled && <style>{passwordPolicyInputCss}</style>}
+        <div className="rpp-field">
+          <input
+            {...inputProps}
+            ref={ref}
+            id={inputId}
+            className={inputClassName ? `rpp-input ${inputClassName}` : 'rpp-input'}
+            type={visible ? 'text' : 'password'}
+            value={password}
+            onChange={handleChange}
+            aria-describedby={describedBy}
+            aria-invalid={password.length > 0 && !isValid ? true : undefined}
+          />
+          {showToggleButton && (
+            <button
+              type="button"
+              className="rpp-toggle"
+              onClick={() => setVisible((v) => !v)}
+              aria-label={visible ? toggleLabels.hide : toggleLabels.show}
+              aria-pressed={visible}
+              aria-controls={inputId}
+            >
+              {visible ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+          )}
+        </div>
+
+        {showStrengthMeter && (
+          <div
+            className="rpp-meter"
+            role="meter"
+            aria-label="Password strength"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(strengthPercent * 100)}
+            aria-valuetext={strengthLabel}
+          >
+            {Array.from({ length: segments }, (_, i) => (
+              <div key={i} className="rpp-segment" data-filled={i < filled || undefined} />
+            ))}
+          </div>
         )}
-      </InputWrapper>
+        {showStrengthMeter && showStrengthLabel && (
+          <p className="rpp-strength-label">{strengthLabel}</p>
+        )}
+        {showStrengthMeter && feedback && (
+          <p className="rpp-feedback" id={feedbackId}>
+            {feedback}
+          </p>
+        )}
 
-      {showStrengthMeter && (
-        <StrengthMeter>
-          {Array.from({ length: 5 }).map((_, index) => (
-            <StrengthMeterSegment
-              key={index}
-              isFilled={strengthScore > index}
-              strengthLabel={strengthLabel}
-            />
-          ))}
-        </StrengthMeter>
-      )}
-
-      {showRequirementsList && (
-        <RequirementsList>
-          {Object.entries(policyState).map(([name, passed]) => (
-            <RequirementItem key={name} passed={passed}>
-              {passed ? '✓' : '✗'}
-              <span>{formatPolicyName(name)}</span>
-            </RequirementItem>
-          ))}
-        </RequirementsList>
-      )}
-    </Container>
-  );
-};
+        {showRequirementsList && (
+          <ul className="rpp-requirements" id={listId} aria-label="Password requirements">
+            {requirements.map(({ name, passed, message }) => (
+              <li key={name} className="rpp-requirement" data-passed={passed || undefined} data-rule={name}>
+                <span className="rpp-icon" aria-hidden="true">
+                  {passed ? '✓' : '✗'}
+                </span>
+                <span>{message}</span>
+                <span className="rpp-sr-only">{passed ? ' (met)' : ' (not met)'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  },
+);

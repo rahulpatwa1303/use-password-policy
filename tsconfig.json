@@ -1,25 +1,18 @@
 {
   "compilerOptions": {
-    // This is the crucial line that fixes your error.
-    // It tells TypeScript how to compile JSX for modern React.
     "jsx": "react-jsx",
-    
-    // --- Standard Modern Library Settings ---
-    "target": "ESNext",
+    "target": "ES2019",
     "module": "ESNext",
-    "moduleResolution": "node",
-    "lib": ["DOM", "ESNext"],
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "ES2020"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "declaration": true,
-    "sourceMap": true,
-    "baseUrl": ".",
-    "paths": {
-      "*": ["src/*"]
-    }
+    "noEmit": true,
+    "isolatedModules": true,
+    "types": []
   },
-  // --- Important: Tell TypeScript what to include/exclude ---
   "include": ["src"],
-  "exclude": ["node_modules", "dist", "demo"]
+  "exclude": ["node_modules", "dist", "demo", "src/**/*.test.ts", "src/**/*.test.tsx"]
 }

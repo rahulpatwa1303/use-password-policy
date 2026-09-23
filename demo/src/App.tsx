@@ -6,14 +6,16 @@ import React, {
   type FormEvent,
 } from "react";
 import { useLocation, Link as RouterLink } from "react-router-dom";
-import styled from "styled-components";
 
-// Make sure your package exports all these types from its main index.ts
 import {
   usePasswordPolicy,
+  usePwnedPassword,
   PasswordPolicyInput,
+  presets,
+  fromZxcvbn,
   type PolicyRule,
   type PasswordPolicyOptions,
+  type StrengthEstimator,
 } from "use-password-policy";
 
 import "./App.css";
@@ -128,19 +130,8 @@ const MoonIcon: FC = () => (
 );
 
 // --- COMPONENT PLAYGROUND ---
-const ThemedPasswordInput = styled(PasswordPolicyInput)<{
-  apptheme: "light" | "dark";
-}>`
-  ${({ apptheme }) =>
-    apptheme === "dark" &&
-    `--rpp-bg: #1a1a1a; --rpp-border: #3a3a3a; --rpp-text: rgba(255, 255, 255, 0.87);`}
-  ${({ apptheme }) =>
-    apptheme === "light" &&
-    `--rpp-bg: #ffffff; --rpp-border: #e0e0e0; --rpp-text: #2c3e50;`}
-`;
 
 interface ComponentDemoProps {
-  appTheme: "light" | "dark";
   showList: boolean;
   setShowList: React.Dispatch<React.SetStateAction<boolean>>;
   showMeter: boolean;
@@ -152,7 +143,6 @@ interface ComponentDemoProps {
 }
 
 const ComponentDemo: FC<ComponentDemoProps> = ({
-  appTheme,
   showList,
   setShowList,
   showMeter,
@@ -166,7 +156,8 @@ const ComponentDemo: FC<ComponentDemoProps> = ({
     <>
       <div className="form-field-group">
         <label htmlFor="interactive-demo-password">Live Component Demo</label>
-        <ThemedPasswordInput
+        <PasswordPolicyInput
+          className="demo-rpp"
           id="interactive-demo-password"
           name="password"
           placeholder="Try me out!"
@@ -174,7 +165,6 @@ const ComponentDemo: FC<ComponentDemoProps> = ({
           showStrengthMeter={showMeter}
           showToggleButton={showToggle}
           policyOptions={{ customRules }}
-          apptheme={appTheme}
         />
       </div>
       <div className="component-controls">
@@ -226,30 +216,51 @@ const DemoPlayground: FC = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [options, setOptions] = useState<PasswordPolicyOptions>({
-    minLength: 8,
-    lowercaseCheck: true,
-    uppercaseCheck: true,
-    numberCheck: true,
-    specialCharCheck: true,
+    ...presets.classic,
+    commonPasswordCheck: true,
   });
+  const [breachCheck, setBreachCheck] = useState(true);
+  const [estimator, setEstimator] = useState<StrengthEstimator | null>(null);
+  const [loadingEstimator, setLoadingEstimator] = useState(false);
+
+  const toggleZxcvbn = async (on: boolean) => {
+    if (!on) return setEstimator(null);
+    setLoadingEstimator(true);
+    // Loaded on demand so the zxcvbn dictionaries don't weigh down the page.
+    const [{ ZxcvbnFactory }, common, en] = await Promise.all([
+      import("@zxcvbn-ts/core"),
+      import("@zxcvbn-ts/language-common"),
+      import("@zxcvbn-ts/language-en"),
+    ]);
+    const zxcvbn = new ZxcvbnFactory({
+      dictionary: { ...common.dictionary, ...en.dictionary },
+      graphs: common.adjacencyGraphs,
+      translations: en.translations,
+    });
+    setEstimator(() => fromZxcvbn(zxcvbn));
+    setLoadingEstimator(false);
+  };
+
+  const applyPreset = (name: keyof typeof presets) =>
+    setOptions((o) => ({ ...o, ...presets[name] }));
   const [userCustomRules, setUserCustomRules] = useState<PolicyRule[]>([]);
   const [newRuleName, setNewRuleName] = useState("");
   const [newRuleRegex, setNewRuleRegex] = useState("");
   const [regexError, setRegexError] = useState<string | null>(null);
 
-  const builtInCustomRules: PolicyRule[] = [
-    {
-      name: "noPassword",
-      test: (p: string) => !p.toLowerCase().includes("password"),
-    },
-  ];
-  const allCustomRules = useMemo(
-    () => [...builtInCustomRules, ...userCustomRules],
-    [userCustomRules]
+  const policy = useMemo<PasswordPolicyOptions>(
+    () => ({
+      ...options,
+      customRules: userCustomRules,
+      strengthEstimator: estimator ?? undefined,
+      minStrength: estimator ? 3 : undefined,
+    }),
+    [options, userCustomRules, estimator]
   );
 
-  const { isValid, strengthScore, strengthLabel, policyState } =
-    usePasswordPolicy({ ...options, password, customRules: allCustomRules });
+  const { isValid, strengthPercent, strengthLabel, requirements, estimate } =
+    usePasswordPolicy({ ...policy, password });
+  const pwned = usePwnedPassword(password, { enabled: breachCheck });
 
   const handleAddRule = (e: FormEvent) => {
     e.preventDefault();
@@ -263,6 +274,7 @@ const DemoPlayground: FC = () => {
         ...userCustomRules,
         {
           name: newRuleName.replace(/\s+/g, ""),
+          message: newRuleName,
           test: (p: string) => regex.test(p),
         },
       ]);
@@ -278,11 +290,6 @@ const DemoPlayground: FC = () => {
     setUserCustomRules(
       userCustomRules.filter((rule) => rule.name !== nameToRemove)
     );
-  const formatPolicyName = (name: string) =>
-    name === "noPassword"
-      ? 'Cannot contain "password"'
-      : name.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
-  const totalPolicies = Object.keys(policyState).length;
 
   return (
     <div className="card">
@@ -295,7 +302,7 @@ const DemoPlayground: FC = () => {
               id="hook-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Try 'P@ssword123'"
+              placeholder="Try 'P@ssword123!'"
             />
             <button
               type="button"
@@ -311,21 +318,27 @@ const DemoPlayground: FC = () => {
             className={`strength-bar ${strengthLabel
               .replace(" ", "-")
               .toLowerCase()}`}
-            style={{
-              width: `${
-                totalPolicies > 0 ? (strengthScore / totalPolicies) * 100 : 0
-              }%`,
-            }}
+            style={{ width: `${strengthPercent * 100}%` }}
           ></div>
         </div>
         <p className="strength-label">
           Strength: <strong>{strengthLabel}</strong>
+          {password && estimate?.feedback ? <> · {estimate.feedback}</> : null}
         </p>
+        {breachCheck && password && (
+          <p className={`breach-status ${pwned.status}`} role="status">
+            {pwned.status === "checking" && "Checking known breaches…"}
+            {pwned.status === "safe" && "✓ Not found in known data breaches"}
+            {pwned.status === "pwned" &&
+              `✗ Seen ${pwned.count.toLocaleString()} times in data breaches — pick another`}
+            {pwned.status === "error" && "Couldn't reach the breach database"}
+          </p>
+        )}
         <ul className="policy-list">
-          {Object.entries(policyState).map(([name, passed]) => (
+          {requirements.map(({ name, passed, message }) => (
             <li key={name} className={passed ? "passed" : "failed"}>
               <span className="icon">{passed ? "✓" : "✗"}</span>
-              {formatPolicyName(name)}
+              {message}
               {userCustomRules.some((r) => r.name === name) ? (
                 <button
                   type="button"
@@ -340,6 +353,50 @@ const DemoPlayground: FC = () => {
           ))}
         </ul>
         <fieldset className="options-group">
+          <legend>Preset</legend>
+          <div className="preset-buttons">
+            <button type="button" onClick={() => applyPreset("classic")}>Classic</button>
+            <button type="button" onClick={() => applyPreset("nist")}>NIST (15+ chars)</button>
+            <button type="button" onClick={() => applyPreset("nistMfa")}>NIST with MFA (8+)</button>
+          </div>
+        </fieldset>
+        <fieldset className="options-group">
+          <legend>Smarter checks</legend>
+          <div className="option-item checkbox">
+            <input
+              type="checkbox"
+              id="commonPasswordCheck"
+              checked={!!options.commonPasswordCheck}
+              onChange={(e) =>
+                setOptions({ ...options, commonPasswordCheck: e.target.checked })
+              }
+            />
+            <label htmlFor="commonPasswordCheck">Block common passwords</label>
+          </div>
+          <div className="option-item checkbox">
+            <input
+              type="checkbox"
+              id="breachCheck"
+              checked={breachCheck}
+              onChange={(e) => setBreachCheck(e.target.checked)}
+            />
+            <label htmlFor="breachCheck">Check Have I Been Pwned</label>
+          </div>
+          <div className="option-item checkbox">
+            <input
+              type="checkbox"
+              id="zxcvbn"
+              checked={!!estimator}
+              disabled={loadingEstimator}
+              onChange={(e) => toggleZxcvbn(e.target.checked)}
+            />
+            <label htmlFor="zxcvbn">
+              Real strength score (zxcvbn, require "Strong")
+              {loadingEstimator ? " — loading…" : ""}
+            </label>
+          </div>
+        </fieldset>
+        <fieldset className="options-group">
           <legend>Default Policies</legend>
           <div className="option-item slider">
             <label htmlFor="minLength">Min Length: {options.minLength}</label>
@@ -347,7 +404,7 @@ const DemoPlayground: FC = () => {
               type="range"
               id="minLength"
               min="4"
-              max="20"
+              max="24"
               value={options.minLength}
               onChange={(e) =>
                 setOptions({ ...options, minLength: Number(e.target.value) })
@@ -420,7 +477,7 @@ const DemoPlayground: FC = () => {
         </fieldset>
       </main>
       <footer className="card-footer">
-        <button className="submit-button" disabled={!isValid}>
+        <button className="submit-button" disabled={!isValid || pwned.isPwned}>
           Submit
         </button>
       </footer>
@@ -441,6 +498,7 @@ function App() {
 
   const noSpacesRule: PolicyRule = {
     name: "noSpaces",
+    message: "No spaces",
     test: (password: string) => !/\s/.test(password),
   };
 
@@ -512,8 +570,8 @@ function App() {
             Effortless Password Validation for React
           </h1>
           <p className="hero-subtitle">
-            Stop writing messy form logic. A simple, customizable hook and a
-            drop-in UI component.
+            One password policy for your React form and your server. NIST
+            presets, breached-password checks, and a drop-in accessible input.
           </p>
           <div className="hero-cta">
             <a href="#component-demo" className="cta-button primary">
@@ -542,24 +600,26 @@ function App() {
               </p>
             </div>
             <div className="feature-card">
-              <h3>🔧 Fully Customizable</h3>
+              <h3>🔁 One Policy, Client & Server</h3>
               <p>
-                Easily configure policies and add your own custom validation
-                logic with regex or functions.
+                <code>validatePassword()</code> has no React dependency. Enforce
+                the exact same rules in your API, with Zod and react-hook-form
+                helpers included.
               </p>
             </div>
             <div className="feature-card">
-              <h3>💅 Zero-Config Styling</h3>
+              <h3>🛡️ Modern Security</h3>
               <p>
-                The UI component works out-of-the-box but is easily themed with
-                `styled-components` or CSS variables.
+                A NIST SP 800-63B preset, a common-password blocklist,
+                breached-password checks via Have I Been Pwned, and optional
+                zxcvbn scoring.
               </p>
             </div>
             <div className="feature-card">
-              <h3>📦 Lightweight & Performant</h3>
+              <h3>📦 Zero Dependencies</h3>
               <p>
-                Zero dependencies and built with performance in mind to prevent
-                unnecessary recalculations.
+                No runtime dependencies. The component ships plain CSS you can
+                theme with CSS variables, Tailwind or any class.
               </p>
             </div>
           </div>
@@ -574,7 +634,6 @@ function App() {
           <div className="component-showcase">
             <div className="component-instance-wrapper">
               <ComponentDemo
-                appTheme={theme}
                 showList={showList}
                 setShowList={setShowList}
                 showMeter={showMeter}

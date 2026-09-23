@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { validatePassword } from './core';
-import { checkPwnedPassword, type CheckPwnedOptions } from './pwned';
+import { applyBreachResult, validatePassword } from './core';
+import { checkPwnedPassword, type CheckPwnedOptions } from './core';
 import type { PasswordPolicyOptions, HookReturnValue } from './types';
 
 /**
  * Validate a password as the user types.
+ *
+ * With `breachCheck: true`, the hook also checks Have I Been Pwned once every other
+ * rule passes (debounced). Until it answers, the `notBreached` requirement is
+ * `pending` and `isValid` stays `false`.
  *
  * Tip: if you pass an expensive `strengthEstimator` (like zxcvbn), memoize
  * your options object so it is only recomputed when the password changes.
@@ -12,7 +16,16 @@ import type { PasswordPolicyOptions, HookReturnValue } from './types';
 export const usePasswordPolicy = (options: PasswordPolicyOptions = {}): HookReturnValue => {
   const { password = '' } = options;
   const result = useMemo(() => validatePassword(password, options), [password, options]);
-  return { password, ...result };
+  const breach = options.breachCheck ? (options.breachCheck === true ? {} : options.breachCheck) : null;
+  const pwned = usePwnedPassword(password, {
+    enabled: Boolean(breach) && result.isValid,
+    debounceMs: breach?.debounceMs,
+    fetch: breach?.fetch,
+    endpoint: breach?.endpoint,
+    padding: breach?.padding,
+  });
+  if (!breach) return { password, ...result };
+  return { password, ...applyBreachResult(result, { status: pwned.status, count: pwned.count }, options) };
 };
 
 export type PwnedStatus = 'idle' | 'checking' | 'safe' | 'pwned' | 'error';

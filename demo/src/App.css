@@ -177,6 +177,8 @@ main { flex: 1; }
 .case[data-state="fail"] .case-name { color: var(--ink-strong); }
 .case[data-state="pass"] .case-name { color: var(--dim); }
 .case[data-state="todo"] { color: var(--dim); }
+.case[data-state="pending"] { color: var(--dim); }
+.case[data-state="pending"] .case-mark { color: var(--path); }
 
 /* signature: watch-mode reprint */
 @media (prefers-reduced-motion: no-preference) {

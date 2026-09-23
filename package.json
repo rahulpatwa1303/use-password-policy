@@ -1,6 +1,6 @@
 {
   "name": "use-password-policy",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Password validation for React and Node: one policy for client and server, NIST presets, breached-password checks, zxcvbn support, Zod & react-hook-form helpers, and an accessible drop-in input.",
   "license": "MIT",
   "author": "Rahul Patwa <rahul.y2j@gmail.com>",

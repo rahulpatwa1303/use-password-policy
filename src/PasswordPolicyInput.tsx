@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { forwardRef, useState } from 'react';
-import { validatePassword } from './core';
+import { forwardRef, useEffect, useRef, useState } from 'react';
+import { usePasswordPolicy } from './use-password-policy';
 import { passwordPolicyInputCss } from './styles';
 import type { PasswordPolicyOptions, HookReturnValue } from './types';
 
@@ -88,14 +88,23 @@ export const PasswordPolicyInput = forwardRef<HTMLInputElement, PasswordPolicyIn
     const password = isControlled ? value : internalValue;
     const [visible, setVisible] = useState(false);
 
-    const validation = validatePassword(password, policyOptions);
+    const validation = usePasswordPolicy({ ...policyOptions, password });
     const { requirements, strengthPercent, strengthLabel, isValid, estimate } = validation;
 
+    // Report changes: on every edit, and again when an async check (breach) settles.
+    const onPasswordChangeRef = useRef(onPasswordChange);
+    onPasswordChangeRef.current = onPasswordChange;
+    const reportKey = `${password}\u0000${isValid}\u0000${validation.breach?.status ?? ''}`;
+    const lastReported = useRef(reportKey);
+    useEffect(() => {
+      if (lastReported.current === reportKey) return;
+      lastReported.current = reportKey;
+      onPasswordChangeRef.current?.(password, validation);
+    });
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const next = e.target.value;
-      if (!isControlled) setInternalValue(next);
+      if (!isControlled) setInternalValue(e.target.value);
       onChange?.(e);
-      onPasswordChange?.(next, { password: next, ...validatePassword(next, policyOptions) });
     };
 
     const segments = 5;
@@ -164,13 +173,27 @@ export const PasswordPolicyInput = forwardRef<HTMLInputElement, PasswordPolicyIn
 
         {showRequirementsList && (
           <ul className="rpp-requirements" id={listId} aria-label="Password requirements">
-            {requirements.map(({ name, passed, message }) => (
-              <li key={name} className="rpp-requirement" data-passed={passed || undefined} data-rule={name}>
+            {requirements.map(({ name, passed, message, pending }) => (
+              <li
+                key={name}
+                className="rpp-requirement"
+                data-passed={passed || undefined}
+                data-pending={pending || undefined}
+                data-rule={name}
+              >
                 <span className="rpp-icon" aria-hidden="true">
-                  {passed ? '✓' : '✗'}
+                  {pending ? (validation.breach?.status === 'checking' ? '…' : '○') : passed ? '✓' : '✗'}
                 </span>
                 <span>{message}</span>
-                <span className="rpp-sr-only">{passed ? ' (met)' : ' (not met)'}</span>
+                <span className="rpp-sr-only">
+                  {pending
+                    ? validation.breach?.status === 'checking'
+                      ? ' (checking)'
+                      : ' (checked once the others are met)'
+                    : passed
+                      ? ' (met)'
+                      : ' (not met)'}
+                </span>
               </li>
             ))}
           </ul>

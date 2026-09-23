@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.1.0
+
+### Added
+- **`patternCheck`** rejects predictable passwords: repeated characters (`aaaaaaaaaaaaaaa`), repeated chunks (`qwertyqwertyqwerty`, `dragon dragon dragon`), sequences and keyboard runs (`123456789012345`, `abcdefghijk`), and passwords made of only a few distinct characters, including all spaces. It's on in `presets.nist` and `presets.nistMfa`.
+- **`breachCheck`** puts Have I Been Pwned into the normal result. The hook checks once the other rules pass and adds a `notBreached` requirement that is `pending` until answered. `isValid` waits for it, and the component shows it automatically. `failOpen` decides what happens when the service is down (default: let through).
+- **`validatePasswordAsync()`** for servers, with the same result plus the breach check. Also `zodPasswordRuleAsync()`, `passwordValidatorAsync()` and `applyBreachResult()`.
+- Results include `breach: { status, count }`, and requirements can be `pending`.
+- `isPredictablePattern()` and `passwordLength()` helpers.
+
+### Fixed
+- Length rules count Unicode code points, as NIST specifies. 8 emoji no longer pass a 15-character minimum.
+- The common-password check now catches list words joined together (`passwordpassword`, `Summer2024!Summer`).
+- `<PasswordPolicyInput />` calls `onPasswordChange` again when an async check settles.
+- Repeated breach checks for the same hash prefix reuse the previous response.
+
 ## 3.0.0
 
 ### Added

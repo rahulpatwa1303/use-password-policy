@@ -167,3 +167,67 @@ describe('<PasswordPolicyInput />', () => {
   });
 });
 
+
+describe('breachCheck in the hook and component', () => {
+  const body = '1E4C9B93F3F0682250B6CF8331B7EE68FD8:42';
+  const policyWith = (fetch: typeof globalThis.fetch, extra = {}) => ({
+    minLength: 8,
+    uppercaseCheck: false,
+    numberCheck: false,
+    specialCharCheck: false,
+    breachCheck: { fetch, debounceMs: 5, ...extra },
+  });
+
+  it('hook: pending while checking, then fails a breached password', async () => {
+    const fetchMock = vi.fn(async () => new Response(body)) as unknown as typeof fetch;
+    const options = policyWith(fetchMock);
+    const { result } = renderHook(() => usePasswordPolicy({ ...options, password: 'password' }));
+    expect(result.current.isValid).toBe(false);
+    expect(result.current.requirements.at(-1)).toMatchObject({ name: 'notBreached', pending: true });
+    await waitFor(() => expect(result.current.breach?.status).toBe('pwned'));
+    expect(result.current.isValid).toBe(false);
+    expect(result.current.errors).toContain('Not found in known data breaches');
+    expect(result.current.strengthLabel).toBe('Very Weak');
+  });
+
+  it('hook: passes a clean password once the check answers', async () => {
+    const fetchMock = vi.fn(async () => new Response(body)) as unknown as typeof fetch;
+    const options = policyWith(fetchMock);
+    const { result } = renderHook(() => usePasswordPolicy({ ...options, password: 'correct horse battery' }));
+    await waitFor(() => expect(result.current.breach?.status).toBe('safe'));
+    expect(result.current.isValid).toBe(true);
+  });
+
+  it('hook: does not call the service while other rules fail', async () => {
+    const fetchMock = vi.fn(async () => new Response(body)) as unknown as typeof fetch;
+    const options = policyWith(fetchMock);
+    const { result } = renderHook(() => usePasswordPolicy({ ...options, password: 'short' }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.breach?.status).toBe('idle');
+  });
+
+  it('hook: failOpen false blocks when the service errors', async () => {
+    const fetchMock = vi.fn(async () => new Response('', { status: 500 })) as unknown as typeof fetch;
+    const options = policyWith(fetchMock, { failOpen: false });
+    const { result } = renderHook(() => usePasswordPolicy({ ...options, password: 'correct horse battery' }));
+    await waitFor(() => expect(result.current.breach?.status).toBe('error'));
+    expect(result.current.isValid).toBe(false);
+  });
+
+  it('component: shows the breach requirement and reports the settled result', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async () => new Response(body)) as unknown as typeof fetch;
+    const onPasswordChange = vi.fn();
+    const options = policyWith(fetchMock);
+    render(<PasswordPolicyInput aria-label="Password" policyOptions={options} onPasswordChange={onPasswordChange} />);
+    await user.type(screen.getByLabelText('Password'), 'password');
+    const item = screen.getByText('Not found in known data breaches').closest('li')!;
+    await waitFor(() => expect(item).not.toHaveAttribute('data-pending'));
+    expect(item).not.toHaveAttribute('data-passed');
+    expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid', 'true');
+    const [, last] = onPasswordChange.mock.calls.at(-1)!;
+    expect(last.breach.status).toBe('pwned');
+    expect(last.isValid).toBe(false);
+  });
+});

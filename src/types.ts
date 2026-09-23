@@ -54,6 +54,21 @@ export interface PasswordPolicyOptions {
   commonPasswords?: readonly string[];
 
   /**
+   * Reject predictable patterns: repeated characters (`aaaaaaaa`), repeated chunks
+   * (`abcabcabc`), sequences and keyboard runs (`123456789`, `qwertyuiop`), and passwords
+   * made of only a few distinct characters (including all spaces). Default `false`;
+   * on in the NIST presets.
+   */
+  patternCheck?: boolean;
+
+  /**
+   * Check Have I Been Pwned as part of the result. The hook runs it automatically once
+   * every other rule passes; on the server use `validatePasswordAsync`. The synchronous
+   * `validatePassword` ignores this option. Default `false`.
+   */
+  breachCheck?: boolean | BreachCheckOptions;
+
+  /**
    * When set (even to `''`), adds a `match` rule that passes only if
    * `password === confirmPassword`.
    */
@@ -79,11 +94,43 @@ export interface PasswordPolicyOptions {
   specialCharRegex?: RegExp;
 }
 
+export interface BreachCheckOptions {
+  /**
+   * What to do when the breach service can't be reached: `true` lets the password
+   * through (the requirement passes and `breach.status` is `'error'`), `false` blocks it.
+   * Default `true`.
+   */
+  failOpen?: boolean;
+  /** Hook only: wait this long after the last keystroke. Default `500` ms. */
+  debounceMs?: number;
+  /** Custom fetch implementation. */
+  fetch?: typeof fetch;
+  /** Range API base URL. Defaults to Have I Been Pwned. */
+  endpoint?: string;
+  /** Send the `Add-Padding` header. Default `false`. */
+  padding?: boolean;
+}
+
+export type BreachStatus = 'idle' | 'checking' | 'safe' | 'pwned' | 'error';
+
+export interface BreachResult {
+  /**
+   * `idle`: not checked yet (other rules still failing, or no input).
+   * `checking`: request in flight. `safe` / `pwned`: answered. `error`: couldn't reach the service.
+   */
+  status: BreachStatus;
+  /** Times seen in breaches (0 unless `pwned`). */
+  count: number;
+}
+
 /** Options after defaults are applied. Passed to every rule's `test`. */
 export type ResolvedPolicyOptions = Required<
-  Omit<PasswordPolicyOptions, 'password' | 'confirmPassword' | 'strengthEstimator' | 'minStrength'>
+  Omit<
+    PasswordPolicyOptions,
+    'password' | 'confirmPassword' | 'strengthEstimator' | 'minStrength' | 'breachCheck'
+  >
 > &
-  Pick<PasswordPolicyOptions, 'confirmPassword' | 'strengthEstimator' | 'minStrength'>;
+  Pick<PasswordPolicyOptions, 'confirmPassword' | 'strengthEstimator' | 'minStrength' | 'breachCheck'>;
 
 /** @deprecated Use `ResolvedPolicyOptions`. */
 export type PolicyDefaults = ResolvedPolicyOptions;
@@ -98,6 +145,8 @@ export interface Requirement {
   name: string;
   passed: boolean;
   message: string;
+  /** `true` while the result isn't known yet (the breach check before it has answered). */
+  pending?: boolean;
 }
 
 /** Result of `validatePassword` (and the hook). */
@@ -117,6 +166,8 @@ export interface ValidationResult {
   strengthLabel: StrengthLabel;
   /** The estimator's result, if `strengthEstimator` is set. */
   estimate?: StrengthEstimate;
+  /** Breach-check state, when `breachCheck` is on (hook and `validatePasswordAsync`). */
+  breach?: BreachResult;
 }
 
 /** What `usePasswordPolicy` returns. */

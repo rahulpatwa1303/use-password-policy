@@ -12,7 +12,7 @@
 - A **NIST SP 800-63B** preset, a common-password blocklist and **Have I Been Pwned** breach checks
 - Optional **zxcvbn** scoring, so "strength" means how hard a password is to guess, not how many boxes it ticks
 - **Zod** and **react-hook-form** helpers
-- No runtime dependencies. About 3 KB gzipped for the core, about 5.5 KB with the React parts.
+- No runtime dependencies. About 4 KB gzipped for the core, about 6.5 KB with the React parts.
 
 ### [➡️ Live demo & playground](https://rahulpatwa1303.github.io/use-password-policy/)
 
@@ -78,17 +78,19 @@ const { isValid, requirements, strengthLabel, strengthPercent } = usePasswordPol
 ```ts
 // password-policy.ts — shared by client and server
 import { presets, type PasswordPolicyOptions } from 'use-password-policy/core';
-export const policy: PasswordPolicyOptions = { ...presets.nist };
+export const policy: PasswordPolicyOptions = { ...presets.nist, breachCheck: true };
 ```
 
 ```ts
 // api/sign-up.ts (Node, Next.js route handler, Express, Cloudflare Worker…)
-import { validatePassword } from 'use-password-policy/core';
+import { validatePasswordAsync } from 'use-password-policy/core';
 import { policy } from './password-policy';
 
-const { isValid, errors } = validatePassword(body.password, policy);
+const { isValid, errors } = await validatePasswordAsync(body.password, policy);
 if (!isValid) return Response.json({ errors }, { status: 400 });
 ```
+
+Use `validatePasswordAsync` when the policy has `breachCheck`. Without it, the synchronous `validatePassword` returns the same result.
 
 `use-password-policy/core` doesn't import React, so it's safe in server bundles.
 
@@ -102,13 +104,13 @@ usePasswordPolicy({ ...presets.nistMfa, password });       // NIST, password is 
 usePasswordPolicy({ ...presets.classic, password });       // 8+ chars, upper, lower, number, symbol (the default)
 ```
 
-| Preset | Min | Max | Composition rules | Blocks common passwords |
-| --- | --- | --- | --- | --- |
-| `classic` (default) | 8 | – | upper, lower, number, symbol | no |
-| `nist` | 15 | 64 | none | yes |
-| `nistMfa` | 8 | 64 | none | yes |
+| Preset | Min | Max | Composition rules | Blocks common passwords | Blocks patterns |
+| --- | --- | --- | --- | --- | --- |
+| `classic` (default) | 8 | – | upper, lower, number, symbol | no | no |
+| `nist` | 15 | 64 | none | yes | yes |
+| `nistMfa` | 8 | 64 | none | yes | yes |
 
-The NIST presets follow [SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html). It asks for length and a blocklist check, and says not to require "mixtures of different character types".
+The NIST presets follow [SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html). It asks for length and a blocklist check, and says not to require "mixtures of different character types". Length is counted in Unicode code points, as NIST specifies, so an emoji counts as one character. To also check known breaches, add `breachCheck: true`.
 
 ## Security add-ons
 
@@ -118,19 +120,34 @@ The NIST presets follow [SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b
 usePasswordPolicy({ password, commonPasswordCheck: true });
 ```
 
-This uses a small built-in list of the most common passwords and base words. It also catches simple variations such as `Password123!`, `P@ssw0rd`, `123qwerty` and `Monkey!!`. Pass `commonPasswords: [...]` to use your own list, for example your product name.
+This uses a small built-in list of the most common passwords and base words. It also catches simple variations such as `Password123!`, `P@ssw0rd`, `123qwerty` and `Monkey!!`, and list words joined together such as `passwordpassword` or `Summer2024!Summer`. Pass `commonPasswords: [...]` to use your own list, for example your product name.
+
+### Block predictable patterns
+
+```ts
+usePasswordPolicy({ password, patternCheck: true });   // on in the NIST presets
+```
+
+Rejects repeated characters (`aaaaaaaaaaaaaaa`), repeated chunks (`qwertyqwertyqwerty`, `dragon dragon dragon`), sequences and keyboard runs (`123456789012345`, `abcdefghijk`, `qwertyuiop`), and passwords made of only a few distinct characters, including all spaces.
 
 ### Check breached passwords (Have I Been Pwned)
 
 ```tsx
-import { usePwnedPassword } from 'use-password-policy';
-
-const pwned = usePwnedPassword(password, { enabled: isValid }); // debounced, cancels stale requests
-// pwned.status: 'idle' | 'checking' | 'safe' | 'pwned' | 'error'
-{pwned.isPwned && <p>Seen {pwned.count.toLocaleString()} times in data breaches. Pick another.</p>}
+const { isValid, requirements, breach } = usePasswordPolicy({ ...presets.nist, breachCheck: true, password });
 ```
 
-On the server: `await checkPwnedPassword(password)` from `use-password-policy/core` returns the breach count.
+With `breachCheck`, the check is part of the normal result:
+- Once every other rule passes, the hook checks Have I Been Pwned (debounced, stale requests cancelled).
+- A "Not found in known data breaches" requirement is `pending` until the check answers, and `isValid` stays `false` until then.
+- A breached password fails with that message and is marked Very Weak. `breach` gives `{ status, count }`, e.g. `{ status: 'pwned', count: 10434004 }`.
+- `<PasswordPolicyInput policyOptions={{ breachCheck: true }} />` shows it in the checklist automatically.
+
+On the server, `await validatePasswordAsync(password, policy)` does the same.
+
+If the service can't be reached, the password is let through by default and `breach.status` is `'error'`. Pass `breachCheck: { failOpen: false }` to block instead. Other settings: `debounceMs` (default 500), `fetch`, `endpoint`, `padding`.
+
+For a custom flow, the lower-level `usePwnedPassword(password)` hook and `checkPwnedPassword(password)` (returns the breach count) are still available.
+
 Only the first 5 characters of the password's SHA-1 hash are sent ([k-anonymity](https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange)), never the password. It needs `crypto.subtle`, which means HTTPS or `localhost` in browsers and Node 20+ on the server.
 
 ### Real strength scoring with zxcvbn
@@ -168,7 +185,7 @@ const schema = z.object({ password: z.string().superRefine(zodPasswordRule(polic
 register('password', { validate: passwordValidator(policy) });
 ```
 
-Neither helper imports Zod or react-hook-form, so they add no dependencies.
+With `breachCheck`, use the async versions, `zodPasswordRuleAsync(policy)` (with `parseAsync`) and `passwordValidatorAsync(policy)`, so the breach check runs too. None of these helpers import Zod or react-hook-form, so they add no dependencies.
 
 ## Confirm-password field
 
@@ -206,6 +223,8 @@ Rule names: `minLength`, `maxLength`, `uppercase`, `lowercase`, `number`, `speci
 | `numberCheck` | `boolean` | `true` | Require a digit. |
 | `specialCharCheck` | `boolean` | `true` | Require a special character. |
 | `commonPasswordCheck` | `boolean` | `false` | Reject common passwords. |
+| `patternCheck` | `boolean` | `false` | Reject repeats, sequences and keyboard patterns. |
+| `breachCheck` | `boolean \| { failOpen, debounceMs, fetch, endpoint, padding }` | `false` | Include the Have I Been Pwned check (hook and `validatePasswordAsync`). |
 | `commonPasswords` | `string[]` | built-in | Replace the blocklist. |
 | `confirmPassword` | `string` | – | Adds a `match` rule when set. |
 | `strengthEstimator` | `(pw) => { score, feedback? }` | – | For example `fromZxcvbn(zxcvbn)`. |
@@ -226,6 +245,9 @@ Rule names: `minLength`, `maxLength`, `uppercase`, `lowercase`, `number`, `speci
 | `strengthPercent` | `number` (0–1) | Fill for a meter. |
 | `strengthScore` | `number` | Number of rules passed. |
 | `estimate` | `{ score, feedback? }` | Only with `strengthEstimator`. |
+| `breach` | `{ status, count }` | Only with `breachCheck`. `status` is `idle`, `checking`, `safe`, `pwned` or `error`. |
+
+Each requirement is `{ name, passed, message, pending? }`. `pending` is `true` while the breach check hasn't answered.
 
 ### `<PasswordPolicyInput />` props
 

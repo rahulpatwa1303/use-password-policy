@@ -10,7 +10,6 @@ import {
 } from "react";
 import {
   usePasswordPolicy,
-  usePwnedPassword,
   PasswordPolicyInput,
   fromZxcvbn,
   type PolicyRule,
@@ -18,7 +17,14 @@ import {
   type StrengthEstimator,
   type ValidationResult,
 } from "use-password-policy";
-import { validatePassword, presets, checkPwnedPassword } from "use-password-policy/core";
+import {
+  validatePassword,
+  validatePasswordAsync,
+  applyBreachResult,
+  presets,
+  checkPwnedPassword,
+  passwordLength,
+} from "use-password-policy/core";
 import "./App.css";
 
 const REPO = "https://github.com/rahulpatwa1303/use-password-policy";
@@ -101,6 +107,7 @@ interface Config {
   numberCheck: boolean;
   specialCharCheck: boolean;
   commonPasswordCheck: boolean;
+  patternCheck: boolean;
 }
 
 const configFromPreset = (preset: PresetName): Config => {
@@ -113,6 +120,7 @@ const configFromPreset = (preset: PresetName): Config => {
     numberCheck: p.numberCheck,
     specialCharCheck: p.specialCharCheck,
     commonPasswordCheck: "commonPasswordCheck" in p ? Boolean(p.commonPasswordCheck) : false,
+    patternCheck: "patternCheck" in p ? Boolean(p.patternCheck) : false,
   };
 };
 
@@ -121,7 +129,7 @@ interface CustomRuleSpec {
   source: string;
 }
 
-function policySource(config: Config, custom: CustomRuleSpec[], zxcvbn: boolean): string {
+function policySource(config: Config, custom: CustomRuleSpec[], zxcvbn: boolean, breach: boolean): string {
   const base = configFromPreset(config.preset);
   const overrides: string[] = [];
   const keys: (keyof Omit<Config, "preset">)[] = [
@@ -131,8 +139,10 @@ function policySource(config: Config, custom: CustomRuleSpec[], zxcvbn: boolean)
     "numberCheck",
     "specialCharCheck",
     "commonPasswordCheck",
+    "patternCheck",
   ];
   for (const k of keys) if (config[k] !== base[k]) overrides.push(`  ${k}: ${config[k]},`);
+  if (breach) overrides.push("  breachCheck: true,");
   if (zxcvbn) overrides.push("  strengthEstimator: fromZxcvbn(zxcvbn),", "  minStrength: 3,");
   if (custom.length) {
     overrides.push("  customRules: [");
@@ -170,8 +180,10 @@ function Lane({
   runKey: string;
 }) {
   const passed = result.requirements.filter((r) => r.passed).length;
-  const failed = result.requirements.length - passed;
-  const badge = idle ? "WAIT" : result.isValid ? "PASS" : "FAIL";
+  const checking = result.breach?.status === "checking";
+  const pending = result.requirements.filter((r) => r.pending).length;
+  const failed = result.requirements.length - passed - pending;
+  const badge = idle ? "WAIT" : failed > 0 ? "FAIL" : pending > 0 ? (checking ? "RUN" : "WAIT") : "PASS";
   return (
     <section className="lane" aria-label={`${runtime} runner`}>
       <header className="lane-head">
@@ -181,14 +193,16 @@ function Lane({
       </header>
       <ol className="cases" key={runKey}>
         {result.requirements.map((r, i) => {
-          const state = idle ? "todo" : r.passed ? "pass" : "fail";
+          const state = idle ? "todo" : r.pending ? (checking ? "pending" : "todo") : r.passed ? "pass" : "fail";
           return (
             <li key={r.name} className="case" data-state={state} style={{ ["--i" as string]: i }}>
               <span className="case-mark" aria-hidden="true">
-                {state === "todo" ? "○" : state === "pass" ? "✓" : "×"}
+                {state === "todo" ? "○" : state === "pending" ? "…" : state === "pass" ? "✓" : "×"}
               </span>
               <span className="case-name">{lowerFirst(r.message)}</span>
-              <span className="sr-only">{state === "todo" ? " (waiting)" : state === "pass" ? " (passed)" : " (failed)"}</span>
+              <span className="sr-only">
+                {state === "todo" ? " (waiting)" : state === "pending" ? " (checking)" : state === "pass" ? " (passed)" : " (failed)"}
+              </span>
             </li>
           );
         })}
@@ -202,6 +216,7 @@ function Lane({
             {failed > 0 && <span className="t-fail">{failed} failed</span>}
             {failed > 0 && passed > 0 && <span className="dim"> | </span>}
             {passed > 0 && <span className="t-pass">{passed} passed</span>}
+            {pending > 0 && <span className="dim"> | {pending} {checking ? "running" : "todo"}</span>}
           </>
         )}{" "}
         <span className="dim">({result.requirements.length})</span>
@@ -276,7 +291,11 @@ function Runner({ zx }: { zx: ReturnType<typeof useZxcvbn> }) {
   const inputId = useId();
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
-  const [config, setConfig] = useState<Config>(() => ({ ...configFromPreset("classic"), commonPasswordCheck: true }));
+  const [config, setConfig] = useState<Config>(() => ({
+    ...configFromPreset("classic"),
+    commonPasswordCheck: true,
+    patternCheck: true,
+  }));
   const [breach, setBreach] = useState(true);
   const [useZx, setUseZx] = useState(false);
   const [custom, setCustom] = useState<CustomRuleSpec[]>([]);
@@ -303,10 +322,12 @@ function Runner({ zx }: { zx: ReturnType<typeof useZxcvbn> }) {
       numberCheck: config.numberCheck,
       specialCharCheck: config.specialCharCheck,
       commonPasswordCheck: config.commonPasswordCheck,
+      patternCheck: config.patternCheck,
+      breachCheck: breach,
       customRules,
       ...(zxOn ? { strengthEstimator: zx.estimator!, minStrength: 3 as const } : {}),
     }),
-    [config, customRules, zxOn, zx.estimator]
+    [config, customRules, zxOn, zx.estimator, breach]
   );
 
   // Browser lane: the React hook.
@@ -314,21 +335,53 @@ function Runner({ zx }: { zx: ReturnType<typeof useZxcvbn> }) {
   const browser = usePasswordPolicy({ ...policy, password });
   const browserMs = performance.now() - t0;
 
-  // Server lane: the framework-free core function your API imports.
-  const t1 = performance.now();
-  const server = validatePassword(password, policy);
-  const serverMs = performance.now() - t1;
+  const runKey = `${password}\u0000${JSON.stringify(config)}\u0000${custom.length}\u0000${zxOn}\u0000${breach}`;
 
-  const pwned = usePwnedPassword(password, { enabled: breach && password.length > 0 });
+  // Server lane: the framework-free core your API imports. With the breach check on,
+  // it runs validatePasswordAsync (debounced), exactly as an API route would.
+  const t1 = performance.now();
+  const serverSync = validatePassword(password, policy);
+  const serverSyncMs = performance.now() - t1;
+  const [serverAsync, setServerAsync] = useState<{ key: string; result: ValidationResult; ms: number } | null>(null);
+  useEffect(() => {
+    if (!policy.breachCheck) return;
+    let cancelled = false;
+    const key = runKey;
+    const timer = window.setTimeout(async () => {
+      const start = performance.now();
+      const result = await validatePasswordAsync(password, policy);
+      if (!cancelled) setServerAsync({ key, result, ms: performance.now() - start });
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [password, policy, runKey]);
+  const asyncReady = Boolean(policy.breachCheck) && serverAsync?.key === runKey;
+  const server = !policy.breachCheck
+    ? serverSync
+    : asyncReady
+      ? serverAsync!.result
+      : applyBreachResult(serverSync, { status: serverSync.isValid ? "checking" : "idle", count: 0 }, policy);
+  const serverMs = asyncReady ? serverAsync!.ms : serverSyncMs;
 
   const idle = password.length === 0;
-  const names = Array.from(new Set([...Object.keys(browser.policyState), ...Object.keys(server.policyState)]));
+  const pendingNames = new Set(
+    [...browser.requirements, ...server.requirements].filter((r) => r.pending).map((r) => r.name)
+  );
+  const names = Array.from(new Set([...Object.keys(browser.policyState), ...Object.keys(server.policyState)])).filter(
+    (n) => !pendingNames.has(n)
+  );
   const identical = names.filter((n) => browser.policyState[n] === server.policyState[n]).length;
-  const exitCode = !idle && browser.isValid && !pwned.isPwned ? 0 : 1;
-  const runKey = `${password}\u0000${JSON.stringify(config)}\u0000${custom.length}\u0000${zxOn}`;
+  const exitCode = !idle && browser.isValid ? 0 : 1;
+  const pwned = browser.breach;
 
   const setPreset = (preset: PresetName) =>
-    setConfig((c) => ({ ...configFromPreset(preset), commonPasswordCheck: preset === "classic" ? c.commonPasswordCheck : true }));
+    setConfig((c) =>
+      preset === "classic"
+        ? { ...configFromPreset(preset), commonPasswordCheck: c.commonPasswordCheck, patternCheck: c.patternCheck }
+        : configFromPreset(preset)
+    );
   const set = <K extends keyof Config>(k: K, v: Config[K]) => setConfig((c) => ({ ...c, [k]: v }));
 
   const addRule = (e: FormEvent) => {
@@ -395,13 +448,20 @@ function Runner({ zx }: { zx: ReturnType<typeof useZxcvbn> }) {
           <span className="path">policy.ts</span>{" "}
           <span className="t-warn">--preset={config.preset}</span>{" "}
           <span className="dim">
-            {idle ? "waiting for input" : `${password.length} char${password.length === 1 ? "" : "s"} changed`}
+            {idle ? "waiting for input" : `${passwordLength(password)} char${passwordLength(password) === 1 ? "" : "s"}`}
           </span>
         </p>
 
         <div className="lanes">
           <Lane runtime="browser" fn="usePasswordPolicy()" result={browser} ms={browserMs} idle={idle} runKey={runKey} />
-          <Lane runtime="server" fn="validatePassword()" result={server} ms={serverMs} idle={idle} runKey={runKey} />
+          <Lane
+            runtime="server"
+            fn={breach ? "validatePasswordAsync()" : "validatePassword()"}
+            result={server}
+            ms={serverMs}
+            idle={idle}
+            runKey={runKey}
+          />
         </div>
 
         <div className="verdict">
@@ -412,15 +472,18 @@ function Runner({ zx }: { zx: ReturnType<typeof useZxcvbn> }) {
             </strong>{" "}
             identical results
           </p>
-          {breach && !idle && (
+          {breach && !idle && pwned && (
             <p className="verdict-line" role="status">
-              <span className="dim">async</span> <code className="path">checkPwnedPassword()</code>{" "}
+              <span className="dim">breach</span> <code className="path">Have I Been Pwned</code>{" "}
+              {pwned.status === "idle" && <span className="dim">waits until the other rules pass</span>}
               {pwned.status === "checking" && <span className="dim">checking known breaches…</span>}
               {pwned.status === "safe" && <span className="t-pass">✓ not found in known breaches</span>}
               {pwned.status === "pwned" && (
                 <span className="t-fail">× seen {pwned.count.toLocaleString()} times in breaches</span>
               )}
-              {pwned.status === "error" && <span className="t-warn">! couldn't reach Have I Been Pwned</span>}
+              {pwned.status === "error" && (
+                <span className="t-warn">! couldn't reach Have I Been Pwned (let through: failOpen)</span>
+              )}
             </p>
           )}
           {zxOn && !idle && browser.estimate?.feedback && (
@@ -495,6 +558,9 @@ function Runner({ zx }: { zx: ReturnType<typeof useZxcvbn> }) {
             <Flag id="f-common" checked={config.commonPasswordCheck} onChange={(v) => set("commonPasswordCheck", v)}>
               --block-common
             </Flag>
+            <Flag id="f-pattern" checked={config.patternCheck} onChange={(v) => set("patternCheck", v)}>
+              --block-patterns
+            </Flag>
             <Flag id="f-breach" checked={breach} onChange={setBreach}>
               --breach-check
             </Flag>
@@ -556,9 +622,9 @@ function Runner({ zx }: { zx: ReturnType<typeof useZxcvbn> }) {
             </ul>
           )}
           <div className="code-block small">
-            <CopyButton text={policySource(config, custom, zxOn)} className="code-copy" />
+            <CopyButton text={policySource(config, custom, zxOn, breach)} className="code-copy" />
             <pre>
-              <code>{policySource(config, custom, zxOn)}</code>
+              <code>{policySource(config, custom, zxOn, breach)}</code>
             </pre>
           </div>
         </div>
@@ -691,11 +757,22 @@ function ComponentDemo() {
   const [list, setList] = useState(true);
   const [toggle, setToggle] = useState(true);
   const [nist, setNist] = useState(false);
+  const [breachOn, setBreachOn] = useState(false);
+  const componentPolicy = useMemo(
+    () => (nist || breachOn ? { ...(nist ? presets.nist : {}), ...(breachOn ? { breachCheck: true } : {}) } : undefined),
+    [nist, breachOn]
+  );
 
   const props = [
     `  id="password"`,
     `  name="password"`,
-    nist ? `  policyOptions={presets.nist}` : null,
+    nist && breachOn
+      ? `  policyOptions={{ ...presets.nist, breachCheck: true }}`
+      : nist
+        ? `  policyOptions={presets.nist}`
+        : breachOn
+          ? `  policyOptions={{ breachCheck: true }}`
+          : null,
     !meter ? `  showStrengthMeter={false}` : null,
     label && meter ? `  showStrengthLabel` : null,
     !list ? `  showRequirementsList={false}` : null,
@@ -728,7 +805,7 @@ ${props.join("\n")}
             id="component-password"
             name="password"
             className="term-rpp"
-            policyOptions={nist ? presets.nist : undefined}
+            policyOptions={componentPolicy}
             showStrengthMeter={meter}
             showStrengthLabel={label}
             showRequirementsList={list}
@@ -738,6 +815,9 @@ ${props.join("\n")}
           <div className="flags-row wrap stage-flags">
             <Flag id="c-nist" checked={nist} onChange={setNist}>
               presets.nist
+            </Flag>
+            <Flag id="c-breach" checked={breachOn} onChange={setBreachOn}>
+              breachCheck
             </Flag>
             <Flag id="c-meter" checked={meter} onChange={setMeter}>
               showStrengthMeter
@@ -776,31 +856,31 @@ const FILES: { name: string; note: string; code: string }[] = [
     code: `import { presets, type PasswordPolicyOptions } from 'use-password-policy/core';
 
 export const policy: PasswordPolicyOptions = {
-  ...presets.nist,              // 15+ chars, no composition rules, blocks common passwords
+  ...presets.nist,              // 15+ chars, no composition rules, blocks common passwords + patterns
+  breachCheck: true,            // Have I Been Pwned, part of isValid
   commonPasswords: ['acme'],    // add your product name
 };`,
   },
   {
     name: "SignUp.tsx",
     note: "client",
-    code: `import { usePasswordPolicy, usePwnedPassword } from 'use-password-policy';
+    code: `import { usePasswordPolicy } from 'use-password-policy';
 import { policy } from './policy';
 
 export function SignUp() {
   const [password, setPassword] = useState('');
+  // isValid stays false until the breach check has answered
   const { isValid, requirements } = usePasswordPolicy({ ...policy, password });
-  const pwned = usePwnedPassword(password, { enabled: isValid });
 
   return (
     <form>
       <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
       <ul>
         {requirements.map((r) => (
-          <li key={r.name} data-passed={r.passed}>{r.message}</li>
+          <li key={r.name} data-passed={r.passed} data-pending={r.pending}>{r.message}</li>
         ))}
       </ul>
-      {pwned.isPwned && <p>This password appears in known data breaches.</p>}
-      <button disabled={!isValid || pwned.isPwned}>Create account</button>
+      <button disabled={!isValid}>Create account</button>
     </form>
   );
 }`,
@@ -808,18 +888,16 @@ export function SignUp() {
   {
     name: "api/sign-up.ts",
     note: "server",
-    code: `import { validatePassword, checkPwnedPassword } from 'use-password-policy/core';
+    code: `import { validatePasswordAsync } from 'use-password-policy/core';
 import { policy } from '../policy';
 
 export async function POST(req: Request) {
   const { password } = await req.json();
 
-  const { isValid, errors } = validatePassword(password, policy);
+  // same rules as the form, including the breach check
+  const { isValid, errors } = await validatePasswordAsync(password, policy);
   if (!isValid) return Response.json({ errors }, { status: 400 });
 
-  if ((await checkPwnedPassword(password)) > 0) {
-    return Response.json({ errors: ['Found in a data breach'] }, { status: 400 });
-  }
   // …create the user
 }`,
   },
@@ -827,24 +905,26 @@ export async function POST(req: Request) {
     name: "schema.ts",
     note: "zod",
     code: `import { z } from 'zod';
-import { zodPasswordRule } from 'use-password-policy/core';
+import { zodPasswordRuleAsync } from 'use-password-policy/core';
 import { policy } from './policy';
 
 export const signUpSchema = z.object({
   email: z.string().email(),
-  password: z.string().superRefine(zodPasswordRule(policy)), // one issue per failed rule
-});`,
+  password: z.string().superRefine(zodPasswordRuleAsync(policy)), // one issue per failed rule
+});
+
+// await signUpSchema.parseAsync(body)`,
   },
   {
     name: "Form.tsx",
     note: "react-hook-form",
     code: `import { useForm } from 'react-hook-form';
-import { passwordValidator } from 'use-password-policy/core';
+import { passwordValidatorAsync } from 'use-password-policy/core';
 import { policy } from './policy';
 
 const { register } = useForm();
 
-<input type="password" {...register('password', { validate: passwordValidator(policy) })} />`,
+<input type="password" {...register('password', { validate: passwordValidatorAsync(policy) })} />`,
   },
 ];
 
@@ -907,10 +987,10 @@ function WireUp() {
 function Facts() {
   const rows: [string, ReactNode, string][] = [
     ["dependencies", "0", "nothing else gets installed"],
-    ["core", "2.9 kB", "gzipped · use-password-policy/core, no React"],
-    ["react entry", "5.3 kB", "gzipped · hook, component, breach hook"],
+    ["core", "3.9 kB", "gzipped · use-password-policy/core, no React"],
+    ["react entry", "6.5 kB", "gzipped · hook, component, breach check"],
     ["react", "≥ 16.8, optional", "tested on 18 and 19"],
-    ["tests", <span className="t-pass">38 passed</span>, "vitest + Testing Library, run in CI"],
+    ["tests", <span className="t-pass">85 passed</span>, "vitest + Testing Library, run in CI"],
     ["guidance", "NIST SP 800-63B-4", "the nist presets follow it"],
     ["license", "MIT", ""],
   ];

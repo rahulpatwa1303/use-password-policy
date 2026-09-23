@@ -1,0 +1,341 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-23T11:55:16.792078Z",
+  "title": "Design System: use-password-policy demo",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Graphite Ground",
+        "tonalRamp": [
+          "#232925",
+          "#3b453e",
+          "#526057",
+          "#697c70",
+          "#8b9d91",
+          "#acb9b0",
+          "#cdd5d0",
+          "#f1f3f2"
+        ]
+      },
+      "pane": {
+        "role": "neutral",
+        "displayName": "Pane",
+        "tonalRamp": [
+          "#232925",
+          "#3a453d",
+          "#526156",
+          "#697c6e",
+          "#8b9d8f",
+          "#acb9af",
+          "#cdd5cf",
+          "#f1f3f2"
+        ]
+      },
+      "pane-hi": {
+        "role": "neutral",
+        "displayName": "Pane High",
+        "tonalRamp": [
+          "#232924",
+          "#3b453d",
+          "#526155",
+          "#697c6d",
+          "#8b9d8f",
+          "#acb9af",
+          "#cdd5cf",
+          "#f1f3f2"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "tonalRamp": [
+          "#232925",
+          "#3b453e",
+          "#526056",
+          "#6a7c6f",
+          "#8c9c90",
+          "#adb8b0",
+          "#ced5d0",
+          "#f1f3f2"
+        ]
+      },
+      "rule-hi": {
+        "role": "neutral",
+        "displayName": "Rule High",
+        "tonalRamp": [
+          "#232925",
+          "#3b443e",
+          "#536057",
+          "#6a7b70",
+          "#8c9c91",
+          "#adb8b1",
+          "#ced4d0",
+          "#f1f3f2"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "tonalRamp": [
+          "#242c21",
+          "#3d4937",
+          "#55664d",
+          "#6d8363",
+          "#8fa385",
+          "#afbda8",
+          "#cfd7cb",
+          "#f2f4f0"
+        ]
+      },
+      "ink-strong": {
+        "role": "neutral",
+        "displayName": "Ink Strong",
+        "tonalRamp": [
+          "#252f1e",
+          "#3d4e32",
+          "#556d46",
+          "#6e8c5a",
+          "#8fab7d",
+          "#afc3a2",
+          "#cfdbc7",
+          "#f2f5ef"
+        ]
+      },
+      "dim": {
+        "role": "neutral",
+        "displayName": "Dim",
+        "tonalRamp": [
+          "#252825",
+          "#3d423e",
+          "#565d56",
+          "#6e786f",
+          "#8f9890",
+          "#afb6b0",
+          "#cfd3d0",
+          "#f2f3f2"
+        ]
+      },
+      "pass": {
+        "role": "primary",
+        "displayName": "Pass Green",
+        "tonalRamp": [
+          "#123b23",
+          "#1d623b",
+          "#298952",
+          "#35b16a",
+          "#5ace8b",
+          "#89dcac",
+          "#b8eacd",
+          "#ebf9f1"
+        ]
+      },
+      "fail": {
+        "role": "secondary",
+        "displayName": "Fail Coral",
+        "tonalRamp": [
+          "#4c0400",
+          "#800700",
+          "#b20a00",
+          "#e60d00",
+          "#ff3529",
+          "#ff6f66",
+          "#ffa8a3",
+          "#ffe7e5"
+        ]
+      },
+      "warn": {
+        "role": "tertiary",
+        "displayName": "Flag Amber",
+        "tonalRamp": [
+          "#42320a",
+          "#6e5411",
+          "#9b7518",
+          "#c7971f",
+          "#e2b645",
+          "#ebcb7a",
+          "#f3e0af",
+          "#fcf6e9"
+        ]
+      },
+      "path": {
+        "role": "secondary",
+        "displayName": "Path Cyan",
+        "tonalRamp": [
+          "#0f383d",
+          "#195e66",
+          "#24838f",
+          "#2ea9b8",
+          "#53c6d4",
+          "#84d6e1",
+          "#b5e7ed",
+          "#ebf8fa"
+        ]
+      },
+      "badge-ink": {
+        "role": "neutral",
+        "displayName": "Badge Ink",
+        "tonalRamp": [
+          "#222a25",
+          "#39473d",
+          "#4f6356",
+          "#66806e",
+          "#88a090",
+          "#aabbb0",
+          "#ccd6cf",
+          "#f1f4f2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero statement only; Martian Mono at 87.5% width."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Section headings with a green › prompt."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Ledes and prose."
+      },
+      "report": {
+        "displayName": "Report",
+        "purpose": "Lane lines, table cells, tabs."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Flags, summaries, buttons, code."
+      },
+      "badge": {
+        "displayName": "Badge",
+        "purpose": "Inverse-video status blocks."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "All state transitions and the reprint."
+      },
+      {
+        "name": "reprint",
+        "value": "260ms clip-path inset(0 100% 0 0) → inset(0), 12ms stagger",
+        "purpose": "Watch-mode rerun of report lines; disabled under reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "lanes-stack",
+        "value": "640px"
+      },
+      {
+        "name": "hero-stack",
+        "value": "960px"
+      },
+      {
+        "name": "nav-hide",
+        "value": "1080px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Copy-install action; one per viewport.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><rect x=\"8\" y=\"8\" width=\"12\" height=\"12\"/><path d=\"M16 8V4H4v12h4\"/></svg>copy install</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid #6fd49a;background:#6fd49a;color:#0c0f0d;font:700 14px/1.5 Iosevka,ui-monospace,monospace;border-radius:0;cursor:pointer;transition:background-color .16s cubic-bezier(.16,1,.3,1)}.ds-btn-primary:hover{background:#f3f6f1;border-color:#f3f6f1}.ds-btn-primary:focus-visible{outline:2px solid #62cbd8;outline-offset:2px}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary copy / links.",
+      "html": "<button class=\"ds-btn-outline\">copy</button>",
+      "css": ".ds-btn-outline{padding:4px 10px;border:1px solid #3a433d;background:transparent;color:#dde3da;font:400 14px/1.5 Iosevka,ui-monospace,monospace;border-radius:0;cursor:pointer}.ds-btn-outline:hover{border-color:#dde3da;color:#f3f6f1}.ds-btn-outline:focus-visible{outline:2px solid #62cbd8;outline-offset:2px}"
+    },
+    {
+      "name": "Flag",
+      "kind": "chip",
+      "refersTo": "seg-selected",
+      "description": "Checkbox rendered as a CLI flag.",
+      "html": "<label class=\"ds-flag\"><input type=\"checkbox\" checked><span class=\"ds-flag-box\">x</span> --uppercase</label>",
+      "css": ".ds-flag{display:inline-flex;gap:6px;align-items:center;color:#f3f6f1;font:400 14px Iosevka,ui-monospace,monospace;cursor:pointer;position:relative}.ds-flag input{position:absolute;opacity:0;width:1px;height:1px}.ds-flag-box{width:3ch;text-align:center}.ds-flag-box::before{content:'[';color:#8e978f}.ds-flag-box::after{content:']';color:#8e978f}.ds-flag:has(input:focus-visible){outline:2px solid #62cbd8;outline-offset:2px}"
+    },
+    {
+      "name": "Prompt Input",
+      "kind": "input",
+      "refersTo": "prompt-input",
+      "description": "The runner's password prompt.",
+      "html": "<div class=\"ds-prompt\"><label for=\"p\">password ›</label><input id=\"p\" placeholder=\"type one\"></div>",
+      "css": ".ds-prompt{display:flex;gap:12px;align-items:center;padding:16px 18px;background:#1c211d;border:1px solid #3a433d;font-family:Iosevka,ui-monospace,monospace}.ds-prompt label{color:#6fd49a;font-weight:700}.ds-prompt input{flex:1;background:transparent;border:0;outline:0;color:#f3f6f1;font:400 24px Iosevka,ui-monospace,monospace}.ds-prompt input::placeholder{color:#8e978f}.ds-prompt:focus-within{box-shadow:inset 0 -2px 0 #6fd49a}"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "custom",
+      "refersTo": "badge-pass",
+      "description": "Inverse-video PASS/FAIL block.",
+      "html": "<span class=\"ds-badge ds-pass\">PASS</span> <span class=\"ds-badge ds-fail\">FAIL</span>",
+      "css": ".ds-badge{display:inline-block;padding:0 .5em;font:700 13px/1.6 Iosevka,ui-monospace,monospace;letter-spacing:.04em;color:#0c0f0d}.ds-pass{background:#6fd49a}.ds-fail{background:#ff7a72}"
+    },
+    {
+      "name": "Report Lane",
+      "kind": "custom",
+      "description": "Signature: one runner's suite output.",
+      "html": "<section class=\"ds-lane\"><header><span class=\"ds-badge ds-fail\">FAIL</span> <b>browser</b> <code>usePasswordPolicy()</code></header><ol><li data-s=\"pass\"><i>✓</i> at least 8 characters</li><li data-s=\"fail\"><i>×</i> not a commonly used password</li></ol><p>Tests <span class=\"f\">1 failed</span> | <span class=\"p\">1 passed</span> (2)</p></section>",
+      "css": ".ds-lane{background:#161a17;border:1px solid #3a433d;padding:12px 18px;color:#dde3da;font:400 15px/1.6 Iosevka,ui-monospace,monospace}.ds-lane header{display:flex;gap:10px;margin-bottom:8px}.ds-lane code{color:#62cbd8;font-size:14px}.ds-lane ol{list-style:none;margin:0;padding:0}.ds-lane li{display:flex;gap:10px}.ds-lane i{font-style:normal;font-weight:700}.ds-lane li[data-s=pass]{color:#8e978f}.ds-lane li[data-s=pass] i{color:#6fd49a}.ds-lane li[data-s=fail]{color:#f3f6f1}.ds-lane li[data-s=fail] i{color:#ff7a72}.ds-lane p{font-size:14px;margin:10px 0 0;color:#8e978f}.ds-lane .f{color:#ff7a72}.ds-lane .p{color:#6fd49a}.ds-badge{display:inline-block;padding:0 .5em;font:700 13px/1.6 Iosevka,ui-monospace,monospace;color:#0c0f0d}.ds-fail{background:#ff7a72}"
+    },
+    {
+      "name": "Top Bar",
+      "kind": "nav",
+      "description": "Sticky prompt-style navigation.",
+      "html": "<nav class=\"ds-nav\"><a class=\"b\" href=\"#\"><span>~/</span>use-password-policy</a><a href=\"#\">try it</a><a href=\"#\">component</a></nav>",
+      "css": ".ds-nav{display:flex;gap:20px;align-items:center;padding:10px 24px;background:rgba(17,20,18,.94);border-bottom:1px solid #2a312c;font:400 15px Iosevka,ui-monospace,monospace}.ds-nav a{color:#8e978f;text-decoration:none}.ds-nav a:hover{color:#f3f6f1}.ds-nav .b{color:#f3f6f1;font-weight:700}.ds-nav .b span{color:#8e978f;font-weight:400}.ds-nav a:focus-visible{outline:2px solid #62cbd8;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Watch-Mode Report",
+    "overview": "The page is a test runner's output, not a marketing page dressed as one. A developer types a password and the page reruns it as a suite, twice: once through the React hook and once through the framework-free core function. It prints both results side by side and closes with a parity line. Every surface reuses the reporter's grammar: inverse-video PASS/FAIL badges, ✓/× gutters, cyan file paths, yellow flags, dim timings and # comments.\n\nThe ground is graphite with a faint green cast, never pure black, and nothing glows. Hierarchy comes from the reporter's own devices: badge colour, the ink-strong vs dim split between failing and passing lines, and one-pixel rules between panes. The only large type is the display headline and section headings in Martian Mono. Everything else is Iosevka, because on this page text is terminal output.",
+    "keyCharacteristics": [
+      "Two lanes, one policy: whenever the product's mechanism appears, it's shown as paired output.",
+      "Reporter palette in named roles. Colour means state, never decoration.",
+      "Square corners, one-pixel rules, no shadows, no gradients.",
+      "Controls read as CLI flags: --preset, [x] --uppercase, --rule name=/…/.",
+      "One authored motion: the watch-mode reprint of report lines."
+    ],
+    "rules": [
+      {
+        "name": "The Signal-Only Rule",
+        "body": "Green, coral, cyan and amber appear only where they carry state or role (pass, fail, path, flag). No decorative colour fields.",
+        "section": "colors"
+      },
+      {
+        "name": "The Inverted Attention Rule",
+        "body": "A failing line is the brightest thing in a lane (Ink Strong) and a passing line recedes to Dim, the way a reporter pulls the eye to what broke.",
+        "section": "colors"
+      },
+      {
+        "name": "The Output-Is-Text Rule",
+        "body": "✓ × ○ are reporter output and belong only inside report lanes and suite tables. Standalone list bullets and UI icons use the authored 1.75-stroke SVG set (check, copy, arrow, GitHub).",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do show the mechanism as paired output (browser lane and server lane) with a parity line.",
+      "Do use badge colour and the Ink Strong / Dim split for state, and always pair colour with a mark or a word.",
+      "Do write controls as flags and headings as prompts, in the product's own API names.",
+      "Do label demonstration inputs as samples and compute every result live."
+    ],
+    "donts": [
+      "Don't use pure black, glows, neon edges or gradients.",
+      "Don't round corners or add drop shadows.",
+      "Don't use ✓/× glyphs as bullets or icons outside report output.",
+      "Don't add kickers or eyebrows above headings, or feature-card grids.",
+      "Don't invent usage numbers, testimonials or benchmarks. Only measured sizes and test counts appear."
+    ]
+  }
+}

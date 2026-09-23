@@ -1,103 +1,68 @@
-import { useMemo } from 'react';
-import { PasswordPolicyOptions, PasswordPolicyState, HookReturnValue, PolicyRule, PolicyDefaults } from './types';
+import { useEffect, useMemo, useState } from 'react';
+import { validatePassword } from './core';
+import { checkPwnedPassword, type CheckPwnedOptions } from './pwned';
+import type { PasswordPolicyOptions, HookReturnValue } from './types';
 
-const DEFAULT_POLICIES: PolicyRule[] = [
-  {
-    name: 'minLength',
-    optionsKey: 'minLength',
-    test: (password, options) => password.length >= options.minLength,
-  },
-  {
-    name: 'uppercase',
-    optionsKey: 'uppercaseCheck',
-    test: (password, options) => options.uppercaseRegex.test(password),
-  },
-  {
-    name: 'lowercase',
-    optionsKey: 'lowercaseCheck',
-    test: (password, options) => options.lowercaseRegex.test(password),
-  },
-  {
-    name: 'number',
-    optionsKey: 'numberCheck',
-    test: (password, options) => options.numberRegex.test(password),
-  },
-  {
-    name: 'specialChar',
-    optionsKey: 'specialCharCheck',
-    test: (password, options) => options.specialCharRegex.test(password),
-  },
-];
-
-// FIX #2: Use the more precise PolicyDefaults type here.
-const DEFAULT_OPTIONS: PolicyDefaults = {
-  minLength: 8,
-  lowercaseCheck: true,
-  uppercaseCheck: true,
-  numberCheck: true,
-  specialCharCheck: true,
-  customRules: [],
-  lowercaseRegex: /[a-z]/,
-  uppercaseRegex: /[A-Z]/,
-  numberRegex: /\d/,
-  specialCharRegex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/,
-};
-
+/**
+ * Validate a password as the user types.
+ *
+ * Tip: if you pass an expensive `strengthEstimator` (like zxcvbn), memoize
+ * your options object so it is only recomputed when the password changes.
+ */
 export const usePasswordPolicy = (options: PasswordPolicyOptions = {}): HookReturnValue => {
   const { password = '' } = options;
-
-  const mergedOptions = useMemo(
-    () => ({ ...DEFAULT_OPTIONS, ...options }),
-    [options]
-  );
-
-  const activePolicies = useMemo(() => {
-    // FIX #1: Add a check for `policy.optionsKey` before using it as an index.
-    const activeDefaultPolicies = DEFAULT_POLICIES.filter(
-      (policy) => policy.optionsKey && mergedOptions[policy.optionsKey]
-    );
-    return [...activeDefaultPolicies, ...mergedOptions.customRules];
-  }, [mergedOptions]);
-
-  const policyState = useMemo<PasswordPolicyState>(() => {
-    const state: PasswordPolicyState = {};
-    for (const policy of activePolicies) {
-        // We cast mergedOptions here because we know it has all the required properties.
-      state[policy.name] = policy.test(password, mergedOptions as Required<PasswordPolicyOptions>);
-    }
-    return state;
-  }, [password, activePolicies, mergedOptions]);
-  
-  const { score, label, isValid } = useMemo(() => {
-    const passedPolicies = Object.values(policyState).filter(Boolean);
-    const score = passedPolicies.length;
-    const totalPolicies = activePolicies.length;
-    const strengthPercentage = totalPolicies > 0 ? score / totalPolicies : 0;
-    
-    // FIX #3: Explicitly type the `label` variable.
-    let label: HookReturnValue['strengthLabel'] = 'Very Weak';
-    if (strengthPercentage >= 1) {
-      label = 'Very Strong';
-    } else if (strengthPercentage >= 0.75) {
-      label = 'Strong';
-    } else if (strengthPercentage >= 0.5) {
-      label = 'Medium';
-    } else if (strengthPercentage > 0) {
-      label = 'Weak';
-    }
-
-    return {
-      score,
-      label,
-      isValid: score === totalPolicies && totalPolicies > 0,
-    };
-  }, [policyState, activePolicies]);
-
-  return {
-    password,
-    policyState,
-    isValid,
-    strengthScore: score,
-    strengthLabel: label,
-  };
+  const result = useMemo(() => validatePassword(password, options), [password, options]);
+  return { password, ...result };
 };
+
+export type PwnedStatus = 'idle' | 'checking' | 'safe' | 'pwned' | 'error';
+
+export interface UsePwnedPasswordOptions extends Omit<CheckPwnedOptions, 'signal'> {
+  /** Turn the check on/off (e.g. only once the policy passes). Default `true`. */
+  enabled?: boolean;
+  /** Wait this long after the last keystroke before checking. Default `500` ms. */
+  debounceMs?: number;
+}
+
+export interface UsePwnedPasswordResult {
+  status: PwnedStatus;
+  /** Times seen in breaches (0 when safe or unknown). */
+  count: number;
+  isPwned: boolean;
+  error?: Error;
+}
+
+/**
+ * Check the password against Have I Been Pwned while the user types
+ * (debounced, cancels stale requests). Only a 5-character hash prefix is sent.
+ */
+export function usePwnedPassword(password: string, options: UsePwnedPasswordOptions = {}): UsePwnedPasswordResult {
+  const { enabled = true, debounceMs = 500, fetch: customFetch, endpoint, padding } = options;
+  const [state, setState] = useState<UsePwnedPasswordResult>({ status: 'idle', count: 0, isPwned: false });
+
+  useEffect(() => {
+    if (!enabled || !password) {
+      setState({ status: 'idle', count: 0, isPwned: false });
+      return;
+    }
+    const controller = new AbortController();
+    setState((s) => (s.status === 'checking' ? s : { status: 'checking', count: 0, isPwned: false }));
+    const timer = setTimeout(() => {
+      checkPwnedPassword(password, { signal: controller.signal, fetch: customFetch, endpoint, padding })
+        .then((count) => {
+          if (!controller.signal.aborted) {
+            setState({ status: count > 0 ? 'pwned' : 'safe', count, isPwned: count > 0 });
+          }
+        })
+        .catch((error: Error) => {
+          if (!controller.signal.aborted) setState({ status: 'error', count: 0, isPwned: false, error });
+        });
+    }, debounceMs);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [password, enabled, debounceMs, customFetch, endpoint, padding]);
+
+  return state;
+}

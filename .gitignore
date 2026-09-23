@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+demo/dist/
+demo/.vite/
+*.tgz
+.DS_Store
+demo/.impeccable/review/

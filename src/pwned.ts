@@ -14,6 +14,29 @@ export interface CheckPwnedOptions {
 
 const HIBP_RANGE = 'https://api.pwnedpasswords.com/range/';
 
+// Recent range responses, per fetch implementation, so the hook and a second
+// check of the same prefix (e.g. client lane + server lane) don't refetch.
+const CACHE_LIMIT = 100;
+const responseCache = new WeakMap<object, Map<string, string>>();
+// Requests in flight, shared so simultaneous checks of one prefix make one request.
+const inflight = new WeakMap<object, Map<string, Promise<string>>>();
+function inflightFor(fetchFn: object): Map<string, Promise<string>> {
+  let map = inflight.get(fetchFn);
+  if (!map) {
+    map = new Map();
+    inflight.set(fetchFn, map);
+  }
+  return map;
+}
+function cacheFor(fetchFn: object): Map<string, string> {
+  let cache = responseCache.get(fetchFn);
+  if (!cache) {
+    cache = new Map();
+    responseCache.set(fetchFn, cache);
+  }
+  return cache;
+}
+
 async function sha1Hex(input: string): Promise<string> {
   const subtle = globalThis.crypto?.subtle;
   if (!subtle) {
@@ -41,13 +64,27 @@ export async function checkPwnedPassword(password: string, options: CheckPwnedOp
   const prefix = hash.slice(0, 5);
   const suffix = hash.slice(5);
 
-  const res = await doFetch(`${options.endpoint ?? HIBP_RANGE}${prefix}`, {
-    signal: options.signal,
-    headers: options.padding ? { 'Add-Padding': 'true' } : undefined,
-  });
-  if (!res.ok) throw new Error(`use-password-policy: breach check failed (HTTP ${res.status}).`);
+  const url = `${options.endpoint ?? HIBP_RANGE}${prefix}`;
+  const cache = cacheFor(doFetch);
+  let body = cache.get(url);
+  if (body === undefined) {
+    const pending = inflightFor(doFetch);
+    let request = pending.get(url);
+    if (!request) {
+      request = (async () => {
+        const res = await doFetch(url, { headers: options.padding ? { 'Add-Padding': 'true' } : undefined });
+        if (!res.ok) throw new Error(`use-password-policy: breach check failed (HTTP ${res.status}).`);
+        const text = await res.text();
+        cache.set(url, text);
+        if (cache.size > CACHE_LIMIT) cache.delete(cache.keys().next().value as string);
+        return text;
+      })().finally(() => pending.delete(url));
+      pending.set(url, request);
+    }
+    body = await request;
+    if (options.signal?.aborted) throw new DOMException('The check was cancelled.', 'AbortError');
+  }
 
-  const body = await res.text();
   for (const line of body.split('\n')) {
     const [lineSuffix, count] = line.trim().split(':');
     if (lineSuffix === suffix) return parseInt(count, 10) || 0;

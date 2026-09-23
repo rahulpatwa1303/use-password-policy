@@ -6,7 +6,10 @@
  * exact same policy on the client and the server.
  */
 import { COMMON_PASSWORDS } from './common-passwords';
+import { checkPwnedPassword } from './pwned';
 import type {
+  BreachCheckOptions,
+  BreachResult,
   PasswordPolicyOptions,
   PolicyRule,
   ResolvedPolicyOptions,
@@ -20,7 +23,7 @@ import type {
 } from './types';
 
 export { COMMON_PASSWORDS };
-export { checkPwnedPassword } from './pwned';
+export { checkPwnedPassword };
 export type { CheckPwnedOptions } from './pwned';
 export type * from './types';
 
@@ -37,6 +40,7 @@ export const DEFAULT_OPTIONS: ResolvedPolicyOptions = {
   specialCharCheck: true,
   commonPasswordCheck: false,
   commonPasswords: COMMON_PASSWORDS,
+  patternCheck: false,
   customRules: [],
   messages: {},
   lowercaseRegex: /[a-z]/,
@@ -60,7 +64,8 @@ export const presets = {
   },
   /**
    * NIST SP 800-63B-4 (Aug 2025) for passwords used on their own:
-   * at least 15 characters, allow up to 64, no composition rules, block common passwords.
+   * at least 15 characters, allow up to 64, no composition rules, block common passwords
+   * and predictable patterns. Add `breachCheck: true` to also check known breaches.
    */
   nist: {
     minLength: 15,
@@ -70,6 +75,7 @@ export const presets = {
     numberCheck: false,
     specialCharCheck: false,
     commonPasswordCheck: true,
+    patternCheck: true,
   },
   /** NIST SP 800-63B-4 when the password is one factor of MFA: at least 8 characters. */
   nistMfa: {
@@ -80,6 +86,7 @@ export const presets = {
     numberCheck: false,
     specialCharCheck: false,
     commonPasswordCheck: true,
+    patternCheck: true,
   },
 } satisfies Record<string, PasswordPolicyOptions>;
 
@@ -91,6 +98,9 @@ export const DEFAULT_MESSAGES: Record<string, RuleMessage> = {
   number: 'A number',
   specialChar: 'A special character',
   notCommon: 'Not a commonly used password',
+  noPattern: 'No repeats, sequences or keyboard patterns',
+  notBreached: 'Not found in known data breaches',
+  breachUnavailable: "Couldn't check known data breaches. Try again",
   match: 'Passwords match',
   strength: 'Hard to guess',
 };
@@ -123,10 +133,31 @@ function getCommonSet(list: readonly string[]): Set<string> {
   return set;
 }
 
+/** Length in Unicode code points, so an emoji counts as one character (as NIST specifies). */
+export const passwordLength = (password: string): number => Array.from(password).length;
+
+/** `true` when a letters-only string is made entirely of list words (e.g. "passworddragon"). */
+function isCommonCombo(word: string, set: Set<string>): boolean {
+  const n = word.length;
+  if (n < 6) return false;
+  const reachable: boolean[] = new Array(n + 1).fill(false);
+  reachable[0] = true;
+  for (let end = 3; end <= n; end++) {
+    for (let start = Math.max(0, end - 20); start <= end - 3; start++) {
+      if (reachable[start] && set.has(word.slice(start, end))) {
+        reachable[end] = true;
+        break;
+      }
+    }
+  }
+  return reachable[n];
+}
+
 /**
- * `true` if the password is on the list, or is a list entry with simple
- * decoration: trailing digits/symbols ("password123!"), a leading number
- * ("123qwerty") or leet swaps ("p@ssw0rd").
+ * `true` if the password is on the list, is a list entry with simple decoration
+ * (trailing digits/symbols "password123!", a leading number "123qwerty", leet swaps
+ * "p@ssw0rd"), or is only list words joined together ("passwordpassword",
+ * "dragon dragon dragon", "Summer2024!Summer").
  */
 export function isCommonPassword(password: string, list: readonly string[] = COMMON_PASSWORDS): boolean {
   if (!password) return false;
@@ -136,7 +167,47 @@ export function isCommonPassword(password: string, list: readonly string[] = COM
   const trimmed = lower.replace(/[^a-z]+$/, '');
   const base = unleet(trimmed);
   const baseNoLeading = unleet(trimmed.replace(/^[^a-z]+/, ''));
-  return [lower, noTrailingSymbols, base, baseNoLeading].some((c) => c.length > 0 && set.has(c));
+  if ([lower, noTrailingSymbols, base, baseNoLeading].some((c) => c.length > 0 && set.has(c))) return true;
+  const lettersOnly = lower.replace(/[^a-z]/g, '');
+  const unleetedLetters = unleet(baseNoLeading).replace(/[^a-z]/g, '');
+  return isCommonCombo(lettersOnly, set) || isCommonCombo(unleetedLetters, set);
+}
+
+const KEYBOARD_ROWS = ['1234567890', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm', 'abcdefghijklmnopqrstuvwxyz'];
+
+function isStep(a: string, b: string): boolean {
+  if (a === b) return false;
+  for (const row of KEYBOARD_ROWS) {
+    const i = row.indexOf(a);
+    const j = row.indexOf(b);
+    if (i >= 0 && j >= 0 && (Math.abs(i - j) === 1 || Math.abs(i - j) === row.length - 1)) return true;
+  }
+  return false;
+}
+
+/**
+ * `true` for passwords that follow a predictable pattern: only whitespace, three or
+ * fewer distinct characters ("aaaaaaaa", "abababab"), a repeated chunk ("abcabcabc",
+ * "qwertyqwertyqwerty"), or mostly sequences and keyboard runs ("123456789012345",
+ * "abcdefghijk", "qwertyuiop", "987654321").
+ */
+export function isPredictablePattern(password: string): boolean {
+  if (!password) return false;
+  if (password.trim() === '') return true;
+  const chars = Array.from(password.toLowerCase());
+  if (new Set(chars).size <= 3) return true;
+
+  const compact = chars.filter((c) => /[a-z0-9]/.test(c) || c.toUpperCase() !== c).join('');
+  for (const s of [compact, compact.replace(/\d+$/, '')]) {
+    if (s.length >= 6 && /^(.+?)\1+$/.test(s)) return true;
+  }
+
+  if (chars.length >= 4) {
+    let steps = 0;
+    for (let i = 1; i < chars.length; i++) if (isStep(chars[i - 1], chars[i])) steps++;
+    if (steps / (chars.length - 1) >= 0.75) return true;
+  }
+  return false;
 }
 
 const prettify = (name: string) =>
@@ -151,10 +222,10 @@ function resolveMessage(rule: PolicyRule, options: ResolvedPolicyOptions): strin
 function builtInRules(options: ResolvedPolicyOptions, estimate?: StrengthEstimate): PolicyRule[] {
   const rules: PolicyRule[] = [];
   if (options.minLength > 0) {
-    rules.push({ name: 'minLength', optionsKey: 'minLength', test: (p, o) => p.length >= o.minLength });
+    rules.push({ name: 'minLength', optionsKey: 'minLength', test: (p, o) => passwordLength(p) >= o.minLength });
   }
   if (options.maxLength > 0) {
-    rules.push({ name: 'maxLength', optionsKey: 'maxLength', test: (p, o) => p.length <= o.maxLength });
+    rules.push({ name: 'maxLength', optionsKey: 'maxLength', test: (p, o) => passwordLength(p) <= o.maxLength });
   }
   if (options.uppercaseCheck) {
     rules.push({ name: 'uppercase', optionsKey: 'uppercaseCheck', test: (p, o) => o.uppercaseRegex.test(p) });
@@ -173,6 +244,13 @@ function builtInRules(options: ResolvedPolicyOptions, estimate?: StrengthEstimat
       name: 'notCommon',
       optionsKey: 'commonPasswordCheck',
       test: (p, o) => p.length > 0 && !isCommonPassword(p, o.commonPasswords),
+    });
+  }
+  if (options.patternCheck) {
+    rules.push({
+      name: 'noPattern',
+      optionsKey: 'patternCheck',
+      test: (p) => p.length > 0 && !isPredictablePattern(p),
     });
   }
   if (options.confirmPassword !== undefined) {
@@ -251,6 +329,79 @@ export function validatePassword(password: string, options: PasswordPolicyOption
 }
 
 // ---------------------------------------------------------------------------
+// Breach check (Have I Been Pwned) as part of the result
+// ---------------------------------------------------------------------------
+
+function breachOptions(option: PasswordPolicyOptions['breachCheck']): BreachCheckOptions | null {
+  if (!option) return null;
+  return option === true ? {} : option;
+}
+
+/**
+ * Fold a breach-check outcome into a validation result: adds a `notBreached`
+ * requirement (pending while unanswered), makes `isValid` depend on it, and marks a
+ * breached password Very Weak. The hook and `validatePasswordAsync` use this; you
+ * only need it for custom flows.
+ */
+export function applyBreachResult(
+  result: ValidationResult,
+  breach: BreachResult,
+  options: PasswordPolicyOptions = {},
+): ValidationResult {
+  const failOpen = (breachOptions(options.breachCheck) ?? {}).failOpen !== false;
+  const resolved = resolveOptions(options);
+  const message = resolveMessage({ name: 'notBreached', test: () => true }, resolved);
+  const pending = breach.status === 'idle' || breach.status === 'checking';
+  const passed = breach.status === 'safe' || (breach.status === 'error' && failOpen);
+
+  const requirement: Requirement = pending
+    ? { name: 'notBreached', passed: false, message, pending: true }
+    : { name: 'notBreached', passed, message };
+  const errors = [...result.errors];
+  if (!pending && !passed) {
+    errors.push(
+      breach.status === 'error' ? resolveMessage({ name: 'breachUnavailable', test: () => true }, resolved) : message,
+    );
+  }
+  const pwned = breach.status === 'pwned';
+  return {
+    ...result,
+    isValid: result.isValid && passed,
+    policyState: { ...result.policyState, notBreached: passed },
+    requirements: [...result.requirements.filter((r) => r.name !== 'notBreached'), requirement],
+    errors,
+    strengthScore: result.strengthScore + (passed ? 1 : 0),
+    strengthPercent: pwned ? 0 : result.strengthPercent,
+    strengthLabel: pwned ? 'Very Weak' : result.strengthLabel,
+    breach,
+  };
+}
+
+/**
+ * Like `validatePassword`, plus the Have I Been Pwned check when `breachCheck` is on.
+ * The breach lookup only runs once every other rule passes. Use this on the server.
+ *
+ * ```ts
+ * const { isValid, errors, breach } = await validatePasswordAsync(password, { ...presets.nist, breachCheck: true });
+ * ```
+ */
+export async function validatePasswordAsync(
+  password: string,
+  options: PasswordPolicyOptions = {},
+): Promise<ValidationResult> {
+  const result = validatePassword(password, options);
+  const b = breachOptions(options.breachCheck);
+  if (!b) return result;
+  if (!result.isValid) return applyBreachResult(result, { status: 'idle', count: 0 }, options);
+  try {
+    const count = await checkPwnedPassword(password ?? '', { fetch: b.fetch, endpoint: b.endpoint, padding: b.padding });
+    return applyBreachResult(result, { status: count > 0 ? 'pwned' : 'safe', count }, options);
+  } catch {
+    return applyBreachResult(result, { status: 'error', count: 0 }, options);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Integrations (zero dependencies — they only rely on each library's shape)
 // ---------------------------------------------------------------------------
 
@@ -305,6 +456,30 @@ export function zodPasswordRule(options: PasswordPolicyOptions = {}, { allErrors
     for (const message of allErrors ? errors : errors.slice(0, 1)) {
       ctx.addIssue({ code: 'custom', message });
     }
+  };
+}
+
+/**
+ * Async version of `zodPasswordRule` that also runs the breach check when
+ * `breachCheck` is on. Use it with `safeParseAsync` / `parseAsync`.
+ */
+export function zodPasswordRuleAsync(options: PasswordPolicyOptions = {}, { allErrors = true } = {}) {
+  return async (value: string, ctx: ZodLikeRefinementCtx): Promise<void> => {
+    const { errors } = await validatePasswordAsync(value, options);
+    for (const message of allErrors ? errors : errors.slice(0, 1)) {
+      ctx.addIssue({ code: 'custom', message });
+    }
+  };
+}
+
+/**
+ * Async version of `passwordValidator` that also runs the breach check when
+ * `breachCheck` is on. react-hook-form accepts async `validate` functions.
+ */
+export function passwordValidatorAsync(options: PasswordPolicyOptions = {}) {
+  return async (value: string): Promise<true | string> => {
+    const { errors } = await validatePasswordAsync(value ?? '', options);
+    return errors.length === 0 ? true : errors[0];
   };
 }
 

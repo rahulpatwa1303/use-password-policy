@@ -24,12 +24,12 @@ Visitors read on desktop at a desk with an editor open, and sometimes on a phone
 
 ## Capabilities and Constraints
 
-- Hook `usePasswordPolicy`, component `<PasswordPolicyInput />`, hook `usePwnedPassword`, core `validatePassword`, `presets` (`classic`, `nist`, `nistMfa`), `fromZxcvbn`, `zodPasswordRule`, `passwordValidator`, `checkPwnedPassword`.
-- Rule names: `minLength`, `maxLength`, `uppercase`, `lowercase`, `number`, `specialChar`, `notCommon`, `match`, `strength`, plus custom rules.
-- Sizes measured from the 3.0.0 build: core ≈ 3 KB gzipped, React entry ≈ 5.5 KB gzipped.
+- Hook `usePasswordPolicy`, component `<PasswordPolicyInput />`, hook `usePwnedPassword`, core `validatePassword` and `validatePasswordAsync`, `presets` (`classic`, `nist`, `nistMfa`), `fromZxcvbn`, `zodPasswordRule`, `passwordValidator`, `checkPwnedPassword`.
+- Rule names: `minLength`, `maxLength`, `uppercase`, `lowercase`, `number`, `specialChar`, `notCommon`, `noPattern`, `notBreached`, `match`, `strength`, plus custom rules.
+- Sizes measured from the 3.1.0 build: core ≈ 3.9 KB gzipped, React entry ≈ 6.5 KB gzipped.
 - The breach check calls api.pwnedpasswords.com from the browser; only a 5-character SHA-1 prefix is sent.
 - zxcvbn is not bundled with the library; the demo loads it on demand.
-- Stack is fixed: Vite + React 18 + TypeScript, react-router-dom present.
+- Stack is fixed: Vite 8 + React 18 + TypeScript.
 
 ## Brand Commitments
 
@@ -39,7 +39,7 @@ Visitors read on desktop at a desk with an editor open, and sometimes on a phone
 
 ## Evidence on Hand
 
-- Live, working library and tests (38 passing on React 18 and 19).
+- Live, working library and tests (85 passing on React 18 and 19).
 - No testimonials, company logos, user counts or download milestones. The repo has very few stars. Do not fabricate social proof, usage numbers or endorsements.
 
 ## Product Principles

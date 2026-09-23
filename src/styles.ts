@@ -83,6 +83,7 @@ export const passwordPolicyInputCss = `
 }
 :where(.rpp-root) .rpp-requirement { display: flex; align-items: center; gap: 0.5rem; color: var(--rpp-danger); }
 :where(.rpp-root) .rpp-requirement[data-passed] { color: var(--rpp-success); }
+:where(.rpp-root) .rpp-requirement[data-pending] { color: var(--rpp-muted); }
 :where(.rpp-root) .rpp-icon { width: 1em; text-align: center; font-weight: 700; }
 :where(.rpp-root) .rpp-sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;

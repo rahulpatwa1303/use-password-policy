@@ -1,0 +1,6 @@
+version: 2
+secret:
+  # Test files use example passwords on purpose; they aren't credentials.
+  ignored_paths:
+    - "src/**/*.test.ts"
+    - "src/**/*.test.tsx"
